@@ -22,7 +22,7 @@
 #include "proctree.h"
 
 #define PROCDIR "/proc"
-#define HASHSIZE 256
+#define HASHSIZE 128
 
 #define list_add(l,p,f) ({			\
 	(p)->f.nx = (l);			\

@@ -1,9 +1,10 @@
 .TH WHOWATCH 1 "27 Feb 2000"
 .SH NAME
-whowatch \- watch logged in users and processes in real time
+whowatch \- console, interactive, process and users monitoring tool.
 .SH DESCRIPTION
-\fBWhowatch\fR is an interactive ncurses who-like utility that displays information 
-about the users currently logged on to the machine, in real-time.
+\fBWhowatch\fR is an console, interactive users and process monitoring
+tool. 
+It displays information about the users currently logged on to the machine, in real-time.
 Besides standard informations (login name, tty, host, user's process),
 the type of the connection (ie. telnet or ssh) is shown.
 Display of users command line can be switch to tty idle time.
@@ -58,6 +59,18 @@ send INT signal to selected process
 .B 'Ctrl-K'
 send KILL signal to selected process
 
+.SH PLUGINS
+Whowatch has ability to load plugin during program run.
+Plugin prints information inside details window.
+Plugins gives flexibility: if some specific information about
+process, user or system is needed then separate program could be
+written to obtain such information.
+Since there are three kinds of deatils window (process, user and
+system) maximum three plugins can be loaded.
+Whowatch has very simple API to write plugins.
+
+
+
 .SH FILES
 Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR. Under Linux program
 also reads files from
@@ -71,6 +84,9 @@ funcionality will be limited or program will not even start.
 .BR pstree (1),
 .BR top (1),
 .BR w (1),
+.BR lsof (8),
+.BR kill (1)
+.BR killall (1)
 
 .SH "BUGS"
 Because lack of ut_pid in utmp and wtmp structures

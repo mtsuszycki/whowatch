@@ -1,6 +1,0 @@
-Version 1.4
-Finally added suport for FreeBSD and OpenBSD
-Added support for PAGE_UP, PAGE_DOWN, HOME, END keys and
-screen functions changed for better performance.
-Added new features: program shows average load, 'c' key for
-turning long processes names on and off. 

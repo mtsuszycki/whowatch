@@ -1,8 +1,11 @@
-Whowatch is an interactive console utility that displays informations about 
-the users currently logged on to the machine, in real time. 
-Besides standard information (login, tty, host, user's process) you can 
-see type of login (ie. ssh, telnet). You can also see selected user's 
-processes tree or all system processes tree.
-In the process tree mode there is ability to send INT or KILL signal to
-selected process and to display process' status informations.
+Whowatch is a interactive, ncurses-based, process and users monitoring tool
+which updates informations in real time.
+It can be described as a some kind of interactive mix of ps, pstree, lsof,
+w, finger and kill.
+You can watch informations about users currently logged on to the machine:
+login type - ie. "ssh" "telnet", tty, host, idle time and command line of 
+their current process. You can also naviagate in processes tree, watch process 
+details (memory, uid, open descriptors with TCP sockets mapped 
+on IP:port -> IP:port pair etc.).
+Whowatch has support for plugins.
 

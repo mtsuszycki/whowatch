@@ -2,7 +2,7 @@ Compile:
 
 ./configure; make
 
-Tested on Linux, FreeBSD and OpenBSD
+Tested on Linux, FreeBSD, OpenBSD and NetBSD
 
 Install:
 make install

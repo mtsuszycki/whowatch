@@ -1,8 +1,10 @@
+/*
+ * Functions needed for printing process owner in the tree.
+ */
 #include <pwd.h>
 #include "whowatch.h"
 
 #define HASHSIZE 32
-
 #define NAME_SIZE	8
 
 #define list_add(l,p) ({			\

@@ -1,7 +1,30 @@
-- Proper handling of 'screen' sessions
-- Add functions that handle screen resizing
-- Add async events (dialog boxes etc)
-- Fix cursor movement functions
-- Uniform list handling (list_head)
-- Resign from ncurses library (?)
+- gdy resize na dosc maly i details window zawija linijki to
+scrolling i tlo do dupy
+* gdy resize w users list to details sie przesuwa i zostawia slad
+* dorobic OK i Cancel w input_box	
+* zmienic change me oraz branie pid albo uid w subwin.c
+* dorobic builtin plugin dla userow i systemu
+- przeniesc pluginy do katalogu plugins a w srodku builtin/ i linux/ bsd/
+- big cleanup w subwin.c dla handle_arrow
+- dodac liste sygnalow
+* dodac ogolna obsluge dla ESCAPE (thanks jb)
+* w ogole poprawic read_key (thanks jb)
+- sprawdzic czy nie za duzo jest redrawwin poza main()
+- w proc_plugin zmienic parsowanie /proc/net/tcp - nie od konca
+znajdowanie inode bo w 2.4.x jest wiecej kolumn
+- poprawic w proc_plugin znajdywanie w liscie haszujacej
+- dodac tam rowniez rm_free_blocks
+* gdy jest details win i nastapi przejscie z proctree do users
+ to nie sa odswiezane detale (?)
+- dorobic make install
+* po resize znika podswietlenie tytulu w menu
+* gdy da sie enter i pojawi "user logged out" to mozna ruszac kursorem. 
+- w user tree znika tree title.
+- mozna przesuwac w prawo details win, pomimo ze nie ma po co.
+- po resize nie wyswietla sie tree_title
+- nie wszystko dziala w menu (np. signal list)
+- gdy z user proc przechodzi do all tree to details nie
+  sa od razu odswiezane
+* !! w open files zle sa wyswietlane porty - ujemne liczby - overflow??
+  (nie overflow ale po prostu brak argumentu w print)
   

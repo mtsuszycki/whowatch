@@ -10,6 +10,7 @@
 #include "config.h"
 #include "procinfo.h"
 
+extern int full_cmd;
 
 #define EXEC_FILE	128
 
@@ -43,6 +44,7 @@ void get_info(int pid, struct procinfo *p)
 	 */
 	p->euid = -1;
 	p->stat = ' ';
+	p->tpgid = -1;
 	strcpy(p->exec_file, "can't access");
     	snprintf(buf, sizeof buf, "/proc/%d/stat", pid);
     	if (!(f = fopen(buf,"rt"))) 
@@ -70,6 +72,7 @@ void get_info(int pid, struct procinfo *p)
 	p->cterm = -1;
 	p->euid = -1;
 	p->stat = ' ';
+	p->tpgid = -1;
 	strcpy(p->exec_file, "can't access");
 	
 	if(fill_kinfo(&info, pid) == -1) return;
@@ -117,6 +120,10 @@ int get_login_pid(char *tty)
 	struct kinfo_proc *info;
 	struct procinfo p;
 	
+	/* this is for ftp logins */
+	if(!strncmp(tty, "ftp", 3)) 
+		return atoi(tty+3);
+		
 	t = get_term(tty);
 	if(t == -1) return -1;
 	mib[0] = CTL_KERN;
@@ -133,7 +140,7 @@ int get_login_pid(char *tty)
 	for(i = 0; i < el; i++) {
 		pid = info[i].kp_proc.p_pid;
 		get_info(get_ppid(pid), &p);
-		if(p.cterm == -1) {
+		if(p.cterm == -1 || p.cterm != t) {
 			free(info);
 			return pid;
 		}
@@ -169,8 +176,11 @@ char *get_cmdline(int pid)
 {
         static char buf[512];
 	struct procinfo p;
+	char *t;
+	int c;
         FILE *f;
         int i = 0;
+        if(!full_cmd) goto no_full;
         sprintf(buf, "/proc/%d/cmdline",pid);
         if (!(f = fopen(buf, "rt")))
                 return "-";
@@ -182,9 +192,14 @@ char *get_cmdline(int pid)
         fclose(f);
 	buf[i] = '\0';
 	if(!i) {
+no_full:
 		get_info(pid, &p);
+		t = p.exec_file;
 		bzero(buf, sizeof buf);
-		strncpy(buf, p.exec_file, sizeof buf - 1);
+		c = strlen(t);
+		if(p.exec_file[0] == '(') t++;
+		if(p.exec_file[--c] == ')') p.exec_file[c] = 0;
+		strncpy(buf, t, sizeof buf - 1);
 	}	
         return buf;
 }
@@ -210,7 +225,7 @@ char *get_cmdline(int pid)
 	if(fill_kinfo(&info, pid) == -1)
 		return "-";
 	memcpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
-
+	if(!full_cmd) return buf;
 #ifdef HAVE_LIBKVM
 	if(!can_use_kvm) return buf;
 	p = kvm_getargv(kd, &info, 0);

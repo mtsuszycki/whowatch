@@ -37,7 +37,8 @@ struct list_head users = { &users, &users };
 FILE *debug_file;
 #endif
 
-int toggle = 0;		/* if 0 show cmd line else show idle time */
+int toggle;		/* if 0 show cmd line else show idle time 	*/
+int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
 int signal_sent;
 
 int how_many, telnet_users, ssh_users, local_users;
@@ -486,7 +487,7 @@ void key_action(int key)
 			clear_list();
 			state = INIT_TREE;
 			print_help(state);
-			tree_pid = 1;
+			tree_pid = 0; /* all processes */
 			tree_periodic();
 			tree_title(0);
 		}
@@ -498,11 +499,17 @@ void key_action(int key)
 		break;
 	case 'o':
 		if (state == USERS_LIST) break;
-		show_owner = show_owner?0:1;
-		tree_periodic();
+		show_owner ^= 1;
+		refresh_tree();
+		wrefresh(proc_win.descriptor);
 /* ugly hack to force proper cursor display on older curses versions */
 //cursor_off(&proc_win, proc_win.cursor_line);
 //cursor_on(&proc_win, proc_win.cursor_line);
+		break;
+	case 'c':
+		full_cmd ^= 1;
+		(*rfrsh[state])(); //refresh_tree();
+		wrefresh(windows[state]->descriptor);
 		break;
 #ifdef DEBUG
 	case 'd':

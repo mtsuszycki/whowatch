@@ -2,7 +2,7 @@ Whowatch is an interactive console utility that displays informations about
 the users currently logged on to the machine, in real time. 
 Besides standard information (login, tty, host, user's process) you can 
 see type of login (ie. ssh, telnet). You can also see selected user's 
-processes tree or all system processes.
+processes tree or all system processes tree.
 In the process tree mode there is ability to send INT or KILL signal to
 selected process.
 

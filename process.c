@@ -56,15 +56,14 @@ void check_line(int line)
 
 void synchronize()
 {
-	char buf[64];
 	int l = 0;
-	struct proc_t *p = tree_start(tree_pid, tree_pid, buf);
+	struct proc_t *p = tree_start(tree_pid, tree_pid);
 	struct process **current = &begin, *z;
 	while(p){
 		if (*current && p->priv){
 			(*current)->line = l++;
 			(*current)->proc->priv = *current;
-			get_state(*current);
+//			get_state(*current);
 			p = tree_next();
 			current = &((*current)->next);
 			continue;
@@ -78,7 +77,7 @@ void synchronize()
 		z->line = l++;
 		(struct process *) p->priv = z;
 		z->proc = p;
-		get_state(z);
+//		get_state(z);
 		if (*current){
 			z->next = *current;
 			(*current)->prev = &z->next;
@@ -122,19 +121,19 @@ char get_state_color(char state)
 
 char *prepare_line(struct process *p)
 {
-	char buf[64];
+	char *tree;
 	if (!p) return 0;
-	tree_start(tree_pid, p->proc->pid, buf);
+	tree = tree_string(tree_pid, p->proc);
 	get_state(p);
 	if(show_owner) 
-		snprintf(line_buf, buf_size,"\x3%5d %c%c \x3%-8s \x2%s- \x3%s", 
+		snprintf(line_buf, buf_size,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, get_owner_name(p->uid), buf, 
+			p->state, get_owner_name(p->uid), tree, 
 			get_cmdline(p->proc->pid));
 	else 
-		snprintf(line_buf, buf_size,"\x3%5d %c%c \x2%s- \x3%s", 
+		snprintf(line_buf, buf_size,"\x3%5d %c%c \x2%s \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, buf, get_cmdline(p->proc->pid));
+			p->state, tree, get_cmdline(p->proc->pid));
 		
 	return line_buf;
 }
@@ -199,7 +198,6 @@ void clear_tree_title()
 	wclrtoeol(w);
 	wrefresh(w);
 }
-
 void tree_periodic()
 {
 	update_tree(mark_del);

@@ -1,18 +1,23 @@
+#include <err.h>
 #include "config.h"
 #include "whowatch.h"
 
 struct window help_win;
 struct window info_win;
+static chtype *curs_buf;
+extern int screen_cols;
 
 char *help_line[] = 
 	{
-	"\001enter - proc tree, t - init tree, i - idle/cmd, x - refresh, q - quit",
-	"\001enter - users list, i - init, o - owner on/off, ^I - send INT, ^K - send KILL",
-	"\001enter - users list, o - owner on/off, ^I - send INT, ^K - send KILL",
+	"\001enter - proc tree, t - init tree, i - idle/cmd, c - cmd, x - refresh, q - quit",
+	"\001enter - users, c - cmd, t - init, o - owner, ^I - send INT, ^K - send KILL",
+	"\001enter - users list, c - cmd, o - owner, ^I - send INT, ^K - send KILL",
 	};
 
 void curses_init()
 {
+	curs_buf = calloc(screen_cols, sizeof(chtype));
+	if(!curs_buf) errx(1, "Cannot allocate memory\n");
 	initscr();
 	users_list.rows = screen_rows - 3;
 //	users_list.cols = screen_cols - 1;	
@@ -42,10 +47,14 @@ void curses_init()
 	init_pair(5,COLOR_RED,COLOR_BLACK);
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_BLUE,COLOR_BLACK);
- 	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
-	wattrset(users_list.descriptor, COLOR_PAIR(3));       
-	wattrset(help_win.descriptor, COLOR_PAIR(3));       
-	wattrset(info_win.descriptor, COLOR_PAIR(3));       
+ //	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
+//	wattrset(users_list.descriptor, COLOR_PAIR(3));       
+//	wattrset(help_win.descriptor, COLOR_PAIR(3));       
+//	wattrset(info_win.descriptor, COLOR_PAIR(3));
+	wbkgd(users_list.descriptor, COLOR_PAIR(3)); 
+	wbkgd(help_win.descriptor, COLOR_PAIR(3)); 
+	wbkgd(info_win.descriptor, COLOR_PAIR(3)); 
+	
 	cbreak();
         nodelay(stdscr,TRUE);
         scrollok(users_list.descriptor,TRUE);
@@ -61,7 +70,6 @@ void curses_end()
 }
 
 // change it to dynamic!!!!
-static chtype curs_buf[256];
 
 void cursor_on(struct window *w, int line)
 {
@@ -323,7 +331,6 @@ void key_home(struct window *w, void (*refresh)())
 		move_cursor(w, w->cursor_line, w->first_line);
 		w->cursor_line = w->first_line;
 	}
-//	wrefresh(w->descriptor);
 }
 
 void key_end(struct window *w, void (*refresh)())
@@ -343,5 +350,4 @@ void key_end(struct window *w, void (*refresh)())
 		move_cursor(w, w->cursor_line, w->last_line);
 		w->cursor_line = w->last_line;
 	}
-//	wrefresh(w->descriptor);
 }

@@ -7,12 +7,14 @@ when viewing users list:
 		 enter - view selected user's processes tree
 		     i - toggle between users idle time and their command line
 		     t - view all system processes (tree from init)
+		     c - full command line on/off
 		     
 ------------------------------------------------------------------------------
 when viewing processes tree:
 
 	cursor up,down - move cursor 
 		 enter - go back to users list
+		     c - full command line on/off
 		     t - view all system processes (tree from init)
 		     o - display owner of each process
 	     Control I - send INT signal to selected process

@@ -1,4 +1,4 @@
-- Support for PAGE_UP and PAGE_DOWN
+- Proper handling of 'screen' program  sessions
 - Add functions that handle screen resizing
 - Add async events (dialog boxes etc)
 - Fix cursor movement functions

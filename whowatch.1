@@ -1,4 +1,4 @@
-.TH WHOWATCH 1 "Aug 14 1999"
+.TH WHOWATCH 1 "27 Feb 2000"
 .SH NAME
 whowatch \- watch logged users in real time
 .SH DESCRIPTION
@@ -19,20 +19,41 @@ All action is performed in real time by pressing following keys:
 .PP
 Users list mode:
 .PP
-.nf
-up, down - cursor movement
-i - toggle between user command line and idle time
-enter - view selected user's processes tree.
-t - all system processes (init tree)
+.TP
+.B 'up' 'down'
+cursor movement
+.TP
+.B 'i'
+toggle between user command line and idle time
+.TP
+.B 'c'
+full command line on/off
+.TP
+.B 'enter'
+view selected user's processes tree.
+.TP
+.B 't'
+all system processes (init tree)
 .PP
 Tree mode:
-.PP
-.nf
-up, down - cursor movement
-enter - go back to users list
-o - show processes owners
-Ctrl-I - send INT signal to selected process
-Ctrl-K - send KILL signal to selected process
+.TP
+.B 'up' 'down'
+cursor movement
+.TP
+.B 'enter'
+go back to users list
+.TP
+.B 'o' 
+show processes owners
+.TP
+.B 'c' 
+full command line on/off
+.TP
+.B 'Ctrl-I'
+send INT signal to selected process
+.TP
+.B 'Ctrl-K'
+send KILL signal to selected process
 
 .SH FILES
 Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR and files from
@@ -49,7 +70,8 @@ funcionality will be limited or program will not even start.
 
 .SH AUTHOR
 .nf
-Michal Suszycki <mike@wizard.ae.krakow.pl>
-Tree functions by Jan Bobrowski<jb@wizard.ae.krakow.pl>
+Michal Suszycki <mike@wizard.ae.krakow.pl>, http://wizard.ae.krakow.pl/~mike
+Tree functions written by Jan Bobrowski <jb@wizard.ae.krakow.pl>, 
+http://wizard.ae.krakow.pl/~jb
 .fi
 

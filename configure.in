@@ -17,7 +17,7 @@ dnl Replace `main' with a function in -lkvm:
 AC_CHECK_LIB(kvm, kvm_openfiles)
 dnl Replace `main' with a function in -lncurses:
 AC_CHECK_LIB(ncurses, initscr)
-AC_CHECK_LIB(ncurses, mvwchgat, AC_DEFINE(HAVE_MVWCHGAT))
+dnl AC_CHECK_LIB(ncurses, mvwchgat, AC_DEFINE(HAVE_MVWCHGAT))
 
 dnl Checks for header files.
 AC_HEADER_DIRENT

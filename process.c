@@ -141,7 +141,6 @@ char *prepare_line(struct process *p)
 char *proc_give_line(int line)
 {
 	struct process *p;
-	
 	for (p = begin; p ; p = p->next){
 		if (p->line == line){
 			if (!p->proc) return "\x1 deleted";
@@ -185,6 +184,8 @@ void tree_title(struct user_t *u)
         buf[sizeof buf - 1] = '\0';
 	wattrset(info_win.descriptor, A_BOLD);
         echo_line(&info_win, buf, 1);
+        /* hide real cursor */
+        wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
         wrefresh(info_win.descriptor);
 }
 
@@ -208,7 +209,10 @@ void tree_periodic()
 void maintree(int pid)
 {
 	struct process *p;
-	if (!begin){
+#ifdef DEBUG
+int i = 1;
+#endif
+	if(!begin) {
 		WINDOW *w = proc_win.descriptor;
 		wmove(w, 0, 0);
 		wclrtoeol(w);
@@ -216,9 +220,26 @@ void maintree(int pid)
 		waddstr(w, "User logged out");		
 		return;
 	}
-	for (p = begin; p ; p = p->next){
-		if (!p->proc) continue;
+	for(p = begin; p ;p = p->next) {
+		if(!p->proc) continue;
+		
+		/* it is above visible screen */
+		if(p->line < proc_win.first_line) continue;
+		
+		/* below visible screen */
+		if(p->line > proc_win.first_line + proc_win.rows - 1)
+			break;
+			
 		print_line(&proc_win,prepare_line(p), p->line, 0);
+#ifdef DEBUG
+i++;
+#endif
 	}
+#ifdef DEBUG
+fprintf(debug_file,"processes printed %d\n",i-1);
+fflush(debug_file);
+#endif
+        /* hide real cursor */
+        wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
 }
 

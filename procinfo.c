@@ -79,9 +79,7 @@ int fill_kinfo(struct kinfo_proc *info, int pid)
 	int len = sizeof *info;
 	if(sysctl(mib, 4, info, &len, 0, 0) == -1) 
 		return -1;
-	if(len == 0) 
-		 return -1;
-	return 0;
+	return len?0:-1;
 }
 		
 void get_info(int pid, struct procinfo *p)
@@ -229,7 +227,8 @@ char *get_cmdline(int pid)
 	bzero(buf, sizeof buf);
 	if(fill_kinfo(&info, pid) == -1)
 		return "-";
-	strncpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
+//	strncpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
+	memcpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
 
 #ifdef HAVE_LIBKVM
 	p = kvm_getargv(kd, &info, 0);

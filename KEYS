@@ -5,8 +5,8 @@ when viewing users list:
 	
 	cursor up,down - move cursor 
 		 enter - view selected user's processes tree
-		     t - toggle between users idle time and their command line
-		     i - view all system processes (tree from init)
+		     i - toggle between users idle time and their command line
+		     t - view all system processes (tree from init)
 		     
 ------------------------------------------------------------------------------
 when viewing processes tree:

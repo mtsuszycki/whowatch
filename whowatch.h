@@ -16,6 +16,7 @@
 #define NORMAL_COLOR	A_NORMAL
 #define CMD_COLUMN	52
 
+#define real_line_nr(x,y)	((x) - (y)->first_line)
 
 #define for_each(e,l) 	for((e)=(l).next; (e)!=(void *) &(l); (e)=(e)->next)
 #define addto_list(e,l)	{(e)->prev=(l).prev;		\
@@ -115,6 +116,10 @@ void cursor_down(struct window *w);
 void cursor_up(struct window *w);
 void delete_line(struct window *w, int line);
 void virtual_delete_line(struct window *w, int line);
+
+#ifndef HAVE_MVWCHGAT
+void refresh_curs_buf(struct window *, int);
+#endif
 
 char *list_giveline(int line);
 

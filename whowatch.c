@@ -302,6 +302,7 @@ char *users_list_giveline(int line)
 void periodic()
 {
 	/* always check wtmp for logins and logouts */
+//printf("\a");
 	check_wtmp();		
 	switch(state){
 		case INIT_TREE:
@@ -447,7 +448,7 @@ void key_action(int key)
 			cleanup();	
 			free(line_buf);
 			exit(0);
-		case 'i':
+		case 't':
 			if (state < INIT_TREE){
 				werase(windows[state]->descriptor);
 				proc_tree_init();
@@ -459,7 +460,7 @@ void key_action(int key)
 				tree_title(0);
 			}
 			break;
-		case 't': 
+		case 'i': 
 			if (state != USERS_LIST) break;
 			toggle = toggle?0:1;
 			show_cmd_or_idle();
@@ -551,6 +552,12 @@ void int_handler()
 int main()
 {
 	struct timeval tv;
+//// fix configure script!
+//#ifndef RETURN_TV_IN_SELECT
+#ifndef linux
+  	struct timeval before;
+  	struct timeval after;
+#endif
 	fd_set rfds;
 	int retval;
 	main_init();
@@ -591,21 +598,31 @@ int main()
 	for(;;) {				/* main loop */
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);
+//#ifdef RETURN_TV_IN_SELECT
+// fix configure!
+#ifdef linux
 		retval = select(1,&rfds,0,0,&tv);
 		if(retval) {
 			int key = read_key();
 			key_action(key);
-			tv.tv_sec = TIMEOUT;
 		}
-//#ifdef RETURN_TV_IN_SELECT
-// fix configure!
-#ifdef linux
 		if (!tv.tv_sec && !tv.tv_usec){
 			periodic();
 			tv.tv_sec = TIMEOUT;
 		}
 #else
-		periodic();
+		gettimeofday(&before, 0);
+		retval = select(1, &rfds, 0, 0, &tv);
+		gettimeofday(&after, 0);
+		tv.tv_sec -= (after.tv_sec - before.tv_sec);
+		if(retval) {
+			int key = read_key();
+			key_action(key);
+		}
+		if(tv.tv_sec <= 0) {
+			periodic();
+			tv.tv_sec = TIMEOUT;
+		}
 #endif
 	}
 }
@@ -614,16 +631,27 @@ void show_cmd_or_idle()
 {
 	struct window *q = &users_list;
 	struct user_t *u;
+	int y, x;
 	for_each(u, users) {
 		if (u->line < q->first_line || u->line > q->last_line) 
 			continue;
 	        
 	        wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
-		wclrtoeol(q->descriptor);
+	        if(real_line_nr(u->line, q) == q->cursor_line)
+	        	wattrset(q->descriptor, A_REVERSE);
+	        else wattrset(q->descriptor, A_BOLD);
+		wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
 	        waddnstr(q->descriptor, toggle?count_idle(u->tty):get_w(u->pid),
 	            COLS - CMD_COLUMN - 1);
+	        getyx(q->descriptor, y, x);
+		while(x++ < q->cols + 1)
+			waddch(q->descriptor, ' ');
+		wmove(q->descriptor, q->cursor_line, q->cols + 1);
 	}
-	cursor_on(q, q->cursor_line);
-	wattrset(q->descriptor, A_BOLD);
+#ifndef HAVE_MVWCHGAT
+//	refresh_curs_buf(q, q->cursor_line);
+		
+#endif
+//	cursor_on(q, q->cursor_line);
 	wrefresh(q->descriptor);
 }

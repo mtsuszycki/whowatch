@@ -10,9 +10,9 @@ int old_curs_vis = 1;	/* this is the cursor mode, set to normal as default */
 
 char *help_line[] = 
 	{
-	"\001enter:proc_tree t:init_tree i:idle/cmd c:cmd x:refresh q:quit",
-	"\001enter:users c:cmd t:init_tree i:details o:owner ^I:send INT ^K:send KILL",
-	"\001enter:users_list c:cmd i:details o:owner ^I:send INT ^K:send KILL",
+	"\001ENTER:proc_tree t:init_tree i:idle/cmd c:cmd s:sysinfo q:quit",
+	"\001ENTER:users c:cmd t:init_tree d:details o:owner s:sysinfo ^I:INT ^K:KILL l:siglist",
+	"\001ENTER:users c:cmd d:details o:owner s:sysinfo ^I:INT ^K:KILL l:siglist",
 	};
 
 void curses_init()
@@ -50,6 +50,7 @@ void curses_init()
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_BLUE,COLOR_BLACK);
  	init_pair(8,COLOR_BLACK, COLOR_CYAN);
+ 	init_pair(9,COLOR_RED, COLOR_CYAN);
 	wattrset(proc_win.wd, COLOR_PAIR(3));       
 	wattrset(users_list.wd, COLOR_PAIR(3));       
 	wattrset(help_win.wd, COLOR_PAIR(3));       
@@ -133,7 +134,7 @@ int echo_line(struct window *w, char *s, int line)
 void print_help(int state)
 {
 	echo_line(&help_win, help_line[state], 0);
-	wrefresh(help_win.wd);
+	wnoutrefresh(help_win.wd);
 }
 
 
@@ -145,7 +146,7 @@ void print_info()
                 how_many, local_users, telnet_users, ssh_users,
         how_many - telnet_users - ssh_users - local_users);
 	echo_line(&info_win, buf, 0);
-	wrefresh(info_win.wd);					
+	wnoutrefresh(info_win.wd);					
 }										
 
 void update_load()
@@ -199,7 +200,6 @@ void delete_line(struct window *w, int line)
 			
 	if (real_line_nr(line, w) < w->cursor_line){
 		w->cursor_line--;
-		wrefresh(w->wd);
 		return;
 	}
 	if (real_line_nr(line, w) == w->cursor_line){
@@ -217,7 +217,7 @@ void delete_line(struct window *w, int line)
 			cursor_on(w, w->cursor_line);
 		}
 	}
-	wrefresh(w->wd);
+//	wrefresh(w->wd);
 }
 
 /*
@@ -306,7 +306,7 @@ void page_down(struct window *w, void (*refresh)())
 	else z = i;
 	w->first_line += z;
 	(*refresh)();
-	wrefresh(w->wd);
+//	wrefresh(w->wd);
 }
 
 void page_up(struct window *w, void (*refresh)())
@@ -325,7 +325,7 @@ void page_up(struct window *w, void (*refresh)())
 	else z = i;
 	w->first_line -= z;
 	(*refresh)();
-	wrefresh(w->wd);
+//	wrefresh(w->wd);
 }
 
 void key_home(struct window *w, void (*refresh)())
@@ -371,6 +371,6 @@ void updatescr(struct window *w)
 	wmove(w->wd, w->cursor_line, w->cols + 1);
 	/* always update info window */
 	wnoutrefresh(info_win.wd);
-	wnoutrefresh(w->wd);
-	doupdate();
+//	wnoutrefresh(w->wd);
+//	doupdate();
 }

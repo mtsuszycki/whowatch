@@ -168,7 +168,7 @@ void print_user(struct user_t *u)
 		toggle?count_idle(u->tty):get_w(u->pid));
 	line_buf[buf_size - 1] = '\0';
 	print_line(&users_list, line_buf ,u->line, state);
-//	wrefresh(users_list.wd);
+	wrefresh(users_list.wd);
 }
 
 void cleanup()
@@ -275,10 +275,8 @@ void check_wtmp()
 #endif
 			u = new_user(&entry);
 			print_user(u);
-//			wrefresh(users_list.wd);
+			wrefresh(users_list.wd);
 			print_info();
-			update_load();
-			wnoutrefresh(info_win.wd);
 			continue;
 		}
 #ifdef HAVE_DEAD_PROCESS
@@ -298,8 +296,6 @@ void check_wtmp()
 			users_list.d_lines = how_many;
 			update_nr_users(u->parent, &u->prot, LOGOUT);
 			print_info();
-			update_load();
-			wnoutrefresh(info_win.wd);
 			delfrom_list(u, users);
 			free(u);
 			break;
@@ -325,113 +321,26 @@ char *users_list_giveline(int line)
 	return 0;
 }
 
-struct signal_t {
-	unsigned int sig;
-	char *descr;
-};
-
-static struct signal_t signals[] = {
-	{ 1, "HUP Hangup detected on controlling terminal" },
-	{ 2, "INT Interrupt from keyboard" },
-	{ 3, "QUIT Quit from keyboard" },
-	{ 4, "ILL Illegal Instruction" },
-	{ 6, "ABRT Abort signal from abort(3)" },
-	{ 8, "FPE Floating point exception" },
-	{ 9, "KILL Kill signal" },
-	{ 11, "SEGV Invalid memory reference" }, 
-	{ 13, "PIPE Broken pipe: " }, //write to pipe with no readers" }, 
-	{ 14, "ALRM Timer signal from alarm(2)" },
-	{ 15, "TERM Termination signal" }
-};
-
-static WINDOW *d_hint;
-static void (*current_d)(struct window *, int);
-static int do_info;
-#define	D_WIN_X		screen_cols/5
-#define D_WIN_Y		screen_rows/4
-
-static int arrow_line;
-
-void send_signal(int, pid_t);
-
-/*
- * Signal list window handles differently 'a' and 'z' keys. 
- */
-static inline void handle_arrow(struct window *w, int key, int p)
-{
-	static int pid;
-	if(p != -1) pid = p;
-	if(!key) {
-		mvwaddstr(w->wd, arrow_line, 0, "->");
-		return;
-	}
-	switch(key) {
-	case 'z':
-		if(arrow_line < d_win.d_lines-1) 
-			arrow_line++;
-		if(arrow_line > w->first_line + d_win.rows - D_WIN_Y) 
-			w->first_line++;
-		break;
-	case 'a':
-		if(arrow_line && arrow_line >= w->first_line) 
-			arrow_line--;
-		if(arrow_line == w->first_line - 1) w->first_line--;
-		break;
-	case 'y':
-		if(pid == -1) return;
-		send_signal(signals[arrow_line].sig, pid);
-		tree_periodic();
-		break;
-	default: return;
-	}
-}
-
-static inline void clear_hint()
-{
-	box(d_hint, ACS_VLINE, ACS_HLINE);	
-	mvwaddstr(d_hint, d_win.rows-D_WIN_Y+2, d_win.cols - D_WIN_X - 16, 
-		" a - up, z - down ");
-	wnoutrefresh(d_hint);
-}
-
-static void list_signals(struct window *w, int pid)
-{
-	int size = sizeof signals/sizeof (struct signal_t);
-	char buf[16];
-	int i;
-	snprintf(buf, sizeof buf, " PID %d", pid);
-	clear_hint();
-	wattrset(d_hint, COLOR_PAIR(9));
-	mvwaddstr(d_hint, 0, 1, buf);
-	waddstr(d_hint,  " - choose signal and press 'y' to send");
-	wattrset(d_hint, COLOR_PAIR(8));
-	for(i = 0; i < size; i++) {
-		snprintf(buf, sizeof buf, "%d ", signals[i].sig);
-		mvwaddstr(w->wd, i, 3, buf);
-		waddstr(w->wd, signals[i].descr);
-		waddstr(w->wd, "\n");
-		w->d_lines++;
-	}
-	handle_arrow(w, 0, pid);
-}
+WINDOW *d_hint;
 
 
 static void create_details()
 {
+	d_hint = newwin(screen_rows - 14, 48, 9, 14);
+	if(!d_hint) prg_exit("Cannot create hint window.");
+	
 	d_win.wd = newpad(DETAILS_WIN_ROWS, DETAILS_WIN_COLS);
 	if(!d_win.wd) prg_exit("Cannot create details window. "
 				"Probably screen is too small.");
-	d_win.rows = screen_rows - D_WIN_Y;
-	d_win.cols = screen_cols - D_WIN_X;
-	d_win.first_line = d_win.s_col = 0;
-	arrow_line = 0;
-	d_hint = newwin(d_win.rows - D_WIN_Y + 3, 
-		d_win.cols - D_WIN_X + 3, D_WIN_Y - 1, D_WIN_X - 1);
-	if(!d_hint) prg_exit("Cannot create hint window.");
+	d_win.rows = screen_rows - 7 - 9;
+	d_win.cols = 60;
+	d_win.first_line = 0;
 //	overwrite(proc_win.wd, d_hint);
 	wbkgd(d_win.wd, COLOR_PAIR(8));
+	box(d_hint, ACS_VLINE, ACS_HLINE);	
 	wbkgd(d_hint, COLOR_PAIR(8));
-	clear_hint();
+	mvwaddstr(d_hint, 0, 29, " a - up, z - down ");
+	wnoutrefresh(d_hint);
 }	
 
 static inline void rm_details()
@@ -448,14 +357,14 @@ static inline void rm_details()
 static inline void refresh_details(struct window *w)
 {
 //char buf[32];
-	/* for list signal window we have to handle arrow sign */
-//	if(current_d == list_signals) handle_arrow(w);
 	wnoutrefresh(d_hint);
-//snprintf(buf, sizeof buf, "%d %d %d ", w->first_line, d_win.rows -D_WIN_Y+1, w->d_lines);
+//snprintf(buf, sizeof buf, "%d %d %d ", w->first_line, w->rows, w->d_lines);
 //mvwaddstr(w->wd,1, 10,  buf);
-	pnoutrefresh(w->wd, w->first_line, w->s_col, D_WIN_Y,
-		 D_WIN_X, d_win.rows, d_win.cols);
+	pnoutrefresh(w->wd, w->first_line, 0, 10, 15, d_win.rows+9, d_win.cols);
 }
+
+void (*current_d)(struct window *, int);
+static int do_info;
 
 /*
  * If details window already exists and prints
@@ -468,8 +377,6 @@ static void handle_d_win(void (*f)(struct window *s, int p))
 		if(f != current_d) {
 			current_d = f;
 			d_win.first_line = 0;
-			arrow_line = 0;
-			clear_hint();
 			do_info = 1;
 		}
 		else {
@@ -494,13 +401,15 @@ static void print_details(struct window *w)
 	if(current_d != sys_info)
 		pid = pid_from_tree(proc_win.cursor_line + proc_win.first_line);
 	if(current_d == sys_info) {
-		if(!do_info) goto SKIP;
+		if(!do_info) {
+			refresh_details(w);
+			return;
+		}	
 		else do_info = 0;
 	}
 	werase(w->wd);
 	w->d_lines = 0;
 	current_d(w, pid);
-SKIP:	
 	refresh_details(w);
 }		
 
@@ -579,7 +488,7 @@ void send_signal(int sig, pid_t pid)
 	else sprintf(buf,"Signal %d was sent to process %d",sig, pid);
 	werase(help_win.wd);
 	echo_line(&help_win, buf, 0);
-	wnoutrefresh(help_win.wd);
+	wrefresh(help_win.wd);
 }
 
 void main_init()
@@ -651,18 +560,14 @@ void ulist_key(int key)
 
 static void details_key(int key)
 {
-	if(current_d == list_signals) {
-		 handle_arrow(&d_win, key, -1);
-		 return;
-	}	 
 	switch(key) {
 	case 'z':
-		if((d_win.first_line+d_win.rows-D_WIN_Y+1) < d_win.d_lines) 
+		if((d_win.first_line + d_win.rows) < d_win.d_lines)
 			d_win.first_line++;
 		break;
 	case 'a':
 		if(d_win.first_line) d_win.first_line--;
-		break;
+		break;		
 	}
 }
 
@@ -677,7 +582,7 @@ void proc_key(int key)
 	case ENTER:
 		werase(windows[state]->wd);
 		state = USERS_LIST;
-		if(d_win.wd && current_d != sys_info) rm_details();
+		if(d_win.wd) rm_details();
 		current_keys = ulist_key;
 		print_help(state);
 		clear_tree_title();
@@ -704,9 +609,6 @@ void proc_key(int key)
 		break;
 	case 'd':
 		handle_d_win(proc_details);
-		break;
-	case 'l':
-		handle_d_win(list_signals);
 		break;
 	}
 }
@@ -759,9 +661,9 @@ void key_action(int key)
 		dump_users();
 		break;
 #endif
-//	case 'x':
-//		restart();
-//		break;
+	case 'x':
+		restart();
+		break;
 	}
 	if(d_win.wd) details_key(key);
 	wnoutrefresh(proc_win.wd);
@@ -870,16 +772,13 @@ int main()
 /*	signal(SIGWINCH, winch_handler);   not yet implemented */
 //	signal(SIGSEGV, segv_handler);
 
+	wrefresh(users_list.wd);
 	read_utmp();
 	print_help(state);
 	print_info();
 	update_load();
 	updatescr(&users_list);
-	wnoutrefresh(users_list.wd);
-	wnoutrefresh(info_win.wd);
-	wnoutrefresh(help_win.wd);
-	doupdate();
-		
+	
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
 	for(;;) {				/* main loop */

@@ -16,6 +16,9 @@
 #define NORMAL_COLOR	A_NORMAL
 #define CMD_COLUMN	52
 
+#define DETAILS_WIN_COLS       64
+#define DETAILS_WIN_ROWS      128
+
 #define real_line_nr(x,y)	((x) - (y)->first_line)
 
 #define for_each(e,l) 	for((e)=(l).next; (e)!=(void *) &(l); (e)=(e)->next)
@@ -53,6 +56,7 @@ struct window
 	unsigned int cols;
 	int first_line;		/* nr of first displayed line	 	*/
 	int last_line;
+	int s_col;		/* display starts from this col		*/
 	int d_lines;		/* current total number of data lines 	*/
 	int cursor_line;	/* where is cursor		 	*/
 	int has_cursor;		/* not yet implemented    		*/
@@ -152,12 +156,10 @@ char *count_idle(char *tty);
 #ifndef HAVE_GETLOADAVG
 int getloadavg(double [], int);
 #endif
-char *read_cwd(int);
-char *read_exe(int);
-char *read_meminfo(int);
+void proc_details(struct window *, int );
+void sys_info(struct window *, int );
+void get_boot_time(void);
 
 /* owner.c */
 char *get_owner_name(int u);
 
-/* whowatch.c */
-void get_details(WINDOW *);

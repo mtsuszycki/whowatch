@@ -1,7 +1,7 @@
 /* 
  * Get process info (ppid, tpgid, name of executable and so on).
  * This is OS dependent: in Linux reading files from "/proc" is
- * performed, in FreeBSD and OpenBSD sysctl() is used (which
+ * needed, in FreeBSD and OpenBSD sysctl() is used (which
  * gives better performance)
  */
 #include <err.h>
@@ -336,54 +336,318 @@ int getloadavg(double d[], int l)
 #endif
 
 
-static char *read_link(int pid, char *name)
+static inline void no_info(struct window *w)
 {
-	static char buf1[128];
+	waddstr(w->wd, "Information unavailable.\n");
+	w->d_lines += 1;
+}
+
+static void read_link(struct window *w, int pid, char *name)
+{
+	char buf[128];
+	char pbuf[32];
+	bzero(buf, sizeof buf);
+	snprintf(pbuf, sizeof pbuf, "/proc/%d/%s", pid, name); 
+	if(readlink(pbuf, buf, sizeof buf) == -1)
+		no_info(w);
+	else {
+		waddstr(w->wd, buf);
+		waddstr(w->wd, "\n");
+		w->d_lines++;
+	}
+}
+
+#include <sys/types.h>
+#include <dirent.h>
+
+void open_fds(struct window *w, int pid, char *name)
+{
+	DIR *d;
 	char buf[32];
-	bzero(buf1, sizeof buf1);
-	snprintf(buf, sizeof buf, "/proc/%d/%s", pid, name);
-	if(readlink(buf, buf1, sizeof buf1) == -1)
-		return 0;
-	return buf1;
+	struct dirent *dn;
+	snprintf(buf, sizeof buf, "/proc/%d/fd", pid);
+	d = opendir(buf);
+	if(!d) {
+		no_info(w);
+		return;
+	}
+	while((dn = readdir(d))) {
+		if(dn->d_name[0] == '.') continue;
+		waddstr(w->wd, dn->d_name);
+		waddstr(w->wd, " -> ");
+		snprintf(buf, sizeof buf, "/fd/%s", dn->d_name);
+		read_link(w, pid, buf);
+	}
+	closedir(d);
 }
 
 /*
- * Linux specific: for a given pid returns current working directory. 
+ * Returns int value at 'pos' position from proc file
+ * that contains values separated by spaces. 
  */
-inline char *read_cwd(int pid)
+static int read_file_pos(char *name, int pos)
 {
-	return read_link(pid, "cwd");	
-}
-
-/*
- * Linux specific: for a given pid returns
- * executable with a full path. 
- */
-inline char *read_exe(int pid)
-{
-	return read_link(pid, "exe");
-}
-
-char *read_meminfo(int pid)
-{
-	static char buf[256];
-	int size = sizeof buf, ok = 0;
-	char *ptr = buf;
 	FILE *f;
-	memset(buf, 0, size);
-	snprintf(buf, sizeof buf, "/proc/%d/status", pid);
-	f = fopen(buf, "r");
-	if(!f) return 0;
-	while(fgets(ptr, size-(ptr-buf), f)) {
-		if(!ok && !strncmp(ptr, "Uid", 3)) ok = 1;
-		if(!strncmp(ptr, "VmLib", 5)) goto END;
-		if(ok) ptr = buf + strlen(buf);
-		else ptr = buf;
+	int i;
+	int c = 1;
+	f = fopen(name, "r");
+	if(!f) return -1;
+	while((i = fgetc(f)) != EOF) {
+		if(i == ' ' || i == '\t') {
+			c++;
+			while((i = fgetc(f)) == ' ');
+			ungetc(i, f);
+		}
+		if(c == pos) goto FOUND;
+	}
+	fclose(f);
+	return -1;
+FOUND:
+	i = fscanf(f, "%d", &c);
+	fclose(f);
+	if(i != 1) return -1;
+	return c;
+}	
+
+static void read_proc_file(struct window *w, char *name, char *start, char *end)
+{
+	char buf[128];
+	int ok = 0;
+	int slen, elen;
+	FILE *f;
+	slen = elen = 0;
+	if(start) slen = strlen(start);
+	if(end) elen = strlen(end);
+	f = fopen(name, "r");
+	if(!f) {
+		no_info(w);
+		return;
+	}
+	if(!start) ok = 1;
+	while(fgets(buf, sizeof buf, f)) {
+		if(!ok && !strncmp(buf, start, slen)) ok = 1;
+		if(end && !strncmp(buf, end, elen)) goto END;
+		if(!ok) continue;
+//                waddnstr(w->wd, buf, DETAILS_WIN_COLS-strlen(buf));
+		waddstr(w->wd, buf);
+		w->d_lines++;
 	}
 END:	
+	if(!ok) no_info(w);
 	fclose(f);
-	return buf;
+}	
+
+static void read_meminfo(struct window *w, int pid, char *name)
+{
+	char buf[32];
+	snprintf(buf, sizeof buf, "/proc/%d/status", pid);
+	read_proc_file(w, buf, "Uid", "VmLib");
 }
+
+
+#define START_TIME_POS	21
+/*
+ * Returns time the process with pid (argument) 
+ *  started in jiffies after system boot.
+ */
+static unsigned long p_start_time(int pid)
+{
+	char buf[32];
+	FILE *f;
+	int i;
+	unsigned long  c = 0;
+	snprintf(buf, sizeof buf, "/proc/%d/stat", pid);
+	f = fopen(buf, "r");
+	if(!f) return -1;
+	while((i = fgetc(f)) != EOF) {
+		if(i == ' ') c++;
+		if(c == START_TIME_POS) goto FOUND;
+	}
+	fclose(f);
+	return -1;
+FOUND:
+	i = fscanf(f, "%ld", &c);
+	fclose(f);
+	if(i != 1) return -1;
+	return c;
+}		
+
+static time_t boot_time;
+
+void get_boot_time(void)
+{
+	char buf[32];
+	FILE *f;
+	unsigned long c;
+	int i = 0;
+	snprintf(buf, sizeof buf, "/proc/stat");
+	f = fopen(buf, "r");
+	if(!f) return;
+	while(fgets(buf, sizeof buf, f)) {
+		if(i == ' ') c++;
+		if(!strncmp(buf, "btime ", 6)) goto FOUND;
+	}
+	fclose(f);
+	return;
+FOUND:
+	i = sscanf(buf+5, "%ld", &c);
+	fclose(f);
+	if(i != 1) return;
+	boot_time = (time_t) c;
+}		
+
+#include <asm/param.h>	// for HZ
+
+static void proc_starttime(struct window *w, int pid, char *name)
+{
+	unsigned long i, sec;
+	char *s;
+	i = p_start_time(pid);
+	if(i == -1 || !boot_time) {
+		no_info(w);
+		return;
+	}
+	sec = boot_time + i/HZ;
+	s = ctime(&sec);
+	waddstr(w->wd, s);
+	w->d_lines++;
+}
+
+struct proc_detail_t {
+        char *title;             /* title of a particular information	*/
+        void (* fn)(struct window *w, int pid, char *name);  
+	int t_lines;		/* nr of line for a title		*/    
+	char *name;		/* used only to read links		*/
+};
+
+struct proc_detail_t proc_details_t[] = {
+	{ "START: ", proc_starttime, 0, 0 		},
+        { "EXE: ", read_link, 0, "exe" 			},
+        { "ROOT: ", read_link, 0, "root" 		},
+        { "CWD: ", read_link, 0, "cwd" 			},
+	{ "\nSTATUS:\n", read_meminfo, 2, 0 		},
+	{ "\nFILE DESCRIPTORS:\n", open_fds, 2, 0 	} 
+};
+
+void proc_details(struct window *w, int pid)
+{
+        int i;
+        struct proc_detail_t *t;
+        int size = sizeof proc_details_t / sizeof(struct proc_detail_t);
+	for(i = 0; i < size; i++) {
+                t = &proc_details_t[i];
+                wattrset(w->wd, A_BOLD);
+		waddstr(w->wd, t->title);
+                wattrset(w->wd, A_NORMAL);
+                w->d_lines += t->t_lines;
+		t->fn(w, pid, t->name);
+	}
+}
+
+static inline void print_boot_time(struct window *w)
+{
+	if(boot_time) waddstr(w->wd, ctime(&boot_time));
+	else no_info(w);
+}
+
+struct cpu_info_t {
+	unsigned long long  u_mode, nice, s_mode, idle;
+};
+
+static struct cpu_info_t c_info, p_info, eff_info;
+
+static struct cpu_info_t *cur_cpu_info = &c_info;
+static struct cpu_info_t *prev_cpu_info = &p_info;
+
+static int fill_cpu_info(void)
+{
+	char buf[64];
+	FILE *f;
+	struct cpu_info_t *tmp;
+	int i = 0;
+	snprintf(buf, sizeof buf, "/proc/stat");
+	f = fopen(buf, "r");
+	if(!f) return -1;
+	while(fgets(buf, sizeof buf, f)) 
+		if(!strncmp(buf, "cpu  ", 5)) goto FOUND;
+	fclose(f);
+	return -1;
+FOUND:
+	tmp = cur_cpu_info;
+	cur_cpu_info = prev_cpu_info;
+	prev_cpu_info = tmp;
+	i = sscanf(buf+5, "%lld %lld %lld %lld", &tmp->u_mode, &tmp->nice,
+		&tmp->s_mode, &tmp->idle);
+	fclose(f);
+	if(i != 4) return -1;
+	eff_info.u_mode = prev_cpu_info->u_mode - cur_cpu_info->u_mode;
+	eff_info.nice = prev_cpu_info->nice - cur_cpu_info->nice;
+	eff_info.s_mode = prev_cpu_info->s_mode - cur_cpu_info->s_mode;
+	eff_info.idle = prev_cpu_info->idle - cur_cpu_info->idle;
+	return 0;
+}
+
+static inline double prcnt(unsigned long i, unsigned long v)
+{
+	if(!v) return 0;
+	return ((double)(i*100))/(double)v;
+}
+
+static void get_cpu_info(struct window *w)
+{
+	char buf[64];
+	unsigned long z;
+	if(fill_cpu_info() == -1) no_info(w);
+	z = eff_info.u_mode + eff_info.nice + eff_info.s_mode + eff_info.idle;
+	snprintf(buf, sizeof buf, "%.1f%% user %.1f%% sys %.1f%% nice %.1f%% idle\n",
+		prcnt(eff_info.u_mode, z),
+		prcnt(eff_info.s_mode, z),
+		prcnt(eff_info.nice, z),
+		prcnt(eff_info.idle, z)
+		);
+	waddstr(w->wd, buf);
+}
+
+void sys_info(struct window *w, int i)
+{
+	char buf[32];
+	int c;
+	waddstr(w->wd, "BOOT TIME: ");
+	print_boot_time(w);
+	waddstr(w->wd, "CPU: ");
+	get_cpu_info(w);
+	waddstr(w->wd, "MEMORY:\n");
+	read_proc_file(w, "/proc/meminfo", "MemTotal:", 0);
+	waddstr(w->wd, "\nUSED FILES: ");
+	c = read_file_pos("/proc/sys/fs/file-nr", 2);
+	if(c == -1) no_info(w);
+	else {
+		snprintf(buf, sizeof buf, "%d\n", c);
+		waddstr(w->wd, buf);
+	}
+	waddstr(w->wd, "USED INODES: ");
+	c = read_file_pos("/proc/sys/fs/inode-nr", 2);
+	if(c == -1) no_info(w);
+	else {
+		snprintf(buf, sizeof buf, "%d\n", c);
+		waddstr(w->wd, buf);
+	}
+	waddstr(w->wd, "MAX FILES: ");
+	read_proc_file(w, "/proc/sys/fs/file-max", 0, 0);
+	waddstr(w->wd, "MAX INODES: ");
+	read_proc_file(w, "/proc/sys/fs/inode-max", 0, 0);
+	waddstr(w->wd, "\nSTAT:\n");
+	read_proc_file(w, "/proc/stat", "disk", "intr");
+	waddstr(w->wd, "\nLOADED MODULES:\n");
+	read_proc_file(w, "/proc/modules", 0, 0);
+	waddstr(w->wd, "\nFILESYSTEMS:\n");
+	read_proc_file(w, "/proc/filesystems", 0, 0);
+	waddstr(w->wd, "\nPARTITIONS:\n");
+	read_proc_file(w, "/proc/partitions", 0, 0);
+	waddstr(w->wd, "\nDEVICES:\n");
+	read_proc_file(w, "/proc/devices", 0, 0);
+	w->d_lines += 16;
+}	
 
 /* 
  * It really shouldn't be in this file.

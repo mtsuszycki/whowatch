@@ -121,19 +121,19 @@ char get_state_color(char state)
 
 char *prepare_line(struct process *p)
 {
-	char *str;
+	char *tree;
 	if (!p) return 0;
-	str = tree_string(tree_pid, p->proc);
+	tree = tree_string(tree_pid, p->proc);
 	get_state(p);
 	if(show_owner) 
 		snprintf(line_buf, buf_size,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, get_owner_name(p->uid), str, 
+			p->state, get_owner_name(p->uid), tree, 
 			get_cmdline(p->proc->pid));
 	else 
 		snprintf(line_buf, buf_size,"\x3%5d %c%c \x2%s \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, str, get_cmdline(p->proc->pid));
+			p->state, tree, get_cmdline(p->proc->pid));
 		
 	return line_buf;
 }

@@ -1,6 +1,6 @@
 /*
  *  Jan Bobrowski <jb@wizard.ae.krakow.pl>
- *  version: 20000508
+ *  version: 20000511
  */
 
 #include <unistd.h>
@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <string.h>
 #include "config.h"
+
 
 #ifdef HAVE_PROCESS_SYSCTL
 #include <sys/param.h>
@@ -78,7 +79,9 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 }
 #endif
 
-static struct proc_t proc_init = {1,&proc_init};
+#define proc_zero (proc_special[0])
+#define proc_init (proc_special[1])
+static struct proc_t proc_special[2] = {{0},{1}};
 static struct proc_t *hash_table[HASHSIZE];
 static struct proc_t *main_list = 0;
 int num_proc = 1;
@@ -91,7 +94,7 @@ static inline int hash_fun(int n)
 struct proc_t* find_by_pid(int n)
 {
 	struct proc_t* p;
-	if(n<=1) return &proc_init;
+	if(n<=1) return &proc_special[n];
 
 	p = hash_table[hash_fun(n)];
 	while(p) {
@@ -129,9 +132,10 @@ static inline struct proc_t* new_proc(int n)
 static struct proc_t *validate_proc(int pid)
 {
 	struct proc_t* p;
-	if(pid<=1) return &proc_init;
 
 	p = find_by_pid(pid);
+	if(pid <= 1)
+		return p;
 	if(p)
 		list_del(p,mlist);
 	else
@@ -213,29 +217,29 @@ struct proc_t* tree_start(int root_pid, int start_pid)
 	root = find_by_pid(root_pid);
 	if (!root) return 0;
 	proc = find_by_pid(start_pid);
-	return proc;
+	if(start_pid)
+		return proc;
+	return tree_next();	/* skip zero proc - it doesn't really exist */
 }
 
 struct proc_t* tree_next()
 {
-	if(proc->child) {
+	if(proc->child)
 		proc = proc->child;
-	} else for(;;) {
-		if(proc->broth.nx) {
-			proc = proc->broth.nx;
+	else
+		for(;; proc = proc->parent) {
+			if(proc == root)
+				proc = 0;
+			else if(proc->broth.nx)
+				proc = proc->broth.nx;
+			else
+				continue;
 			break;
 		}
-		
-		proc = proc->parent;
-		if(proc == root) {
-			proc = 0;
-			break;
-		}
-	}
 	return proc;
 }
 
-static char buf[2+2*PROC_DEPTH];
+static char buf[TREE_STRING_SZ];
 
 char* tree_string(int root, struct proc_t *p)
 {
@@ -244,18 +248,21 @@ char* tree_string(int root, struct proc_t *p)
 	int i, d;
 
 	i = 0;
-	for(q=p; q->pid!=root && q->pid!=1; q=q->parent)
+	for(q=p; q->pid!=root; q=q->parent)
 		i++;
+
+	if(root == 0)
+		i--;	/* forest of all processes case */
 	d = i;
 
-	while(i>PROC_DEPTH)
+	while(i > TREE_DEPTH)
 		p=p->parent, i--;
 
 	s = buf + 2*i;
 	s[1] = 0;
 	s[0] = '.';
 
-	if(d<=PROC_DEPTH) {
+	if(d <= TREE_DEPTH) {
 		s[0] = '-';
 		if(i > 0 && !p->broth.nx) {
 			*--s = '`';

@@ -1,5 +1,6 @@
 
-#define PROC_DEPTH 8
+#define TREE_DEPTH 3
+#define TREE_STRING_SZ (2 + 2*TREE_DEPTH)
 
 struct plist {
 	struct proc_t* nx;
@@ -17,6 +18,7 @@ struct proc_t {
 };
 
 int update_tree(void del(void*));
+int update_tree();
 struct proc_t* find_by_pid(int pid);
 struct proc_t* tree_start(int root, int start);
 struct proc_t* tree_next();

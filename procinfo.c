@@ -8,32 +8,13 @@
 #include "whowatch.h"
 #include "proctree.h"
 #include "config.h"
-
-#ifdef HAVE_PROCESS_SYSCTL
-#include <sys/param.h>
-#include <sys/sysctl.h>
-#include <sys/proc.h>
-#include <sys/stat.h>
-#endif
-
-#ifdef __FreeBSD__
-#include <sys/user.h>
-#endif
-
-#ifdef HAVE_LIBKVM
-#include <kvm.h>
-#endif
+#include "procinfo.h"
 
 
 #define EXEC_FILE	128
 
 #define elemof(x)	(sizeof (x) / sizeof*(x))
 #define endof(x)	((x) + elemof(x))
-
-#ifdef HAVE_LIBKVM
-static kvm_t *kd;
-#endif
-
 
 struct procinfo
 {
@@ -210,10 +191,11 @@ char *get_cmdline(int pid)
 #endif
 
 #ifdef HAVE_LIBKVM
-void kvm_init()
+int kvm_init()
 {
 	kd = kvm_openfiles(0, 0, 0, O_RDONLY, 0);
-	if(!kd) errx(1, "Cannot initialize kvm");
+	if(!kd) return 0;
+	return 1;
 }
 #endif
 
@@ -227,10 +209,10 @@ char *get_cmdline(int pid)
 	bzero(buf, sizeof buf);
 	if(fill_kinfo(&info, pid) == -1)
 		return "-";
-//	strncpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
 	memcpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
 
 #ifdef HAVE_LIBKVM
+	if(!can_use_kvm) return buf;
 	p = kvm_getargv(kd, &info, 0);
 	if(!p) 	return buf;
 	for(; *p; p++) {

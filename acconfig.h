@@ -12,9 +12,6 @@
 /* define if utmp structure has ut_pid member */
 #undef HAVE_UTPID
 
-/* define if ncurses library has mvwchgat() function */
-#undef HAVE_MVWCHGAT
-
 /* define if we can use timeval struct after calling select */
 #undef RETURN_TV_IN_SELECT
 

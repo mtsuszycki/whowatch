@@ -1,5 +1,5 @@
-#include "whowatch.h"
 #include "config.h"
+#include "whowatch.h"
 
 struct window help_win;
 struct window info_win;
@@ -33,7 +33,7 @@ void curses_init()
 	}
 
 	wattrset(users_list.descriptor, A_BOLD);
-        printf("\033[?25l");                    /* disable cursor */
+//        printf("\033[?25l");                    /* disable cursor */
         start_color();
 	init_pair(1,COLOR_CYAN,COLOR_BLACK);
         init_pair(2,COLOR_GREEN,COLOR_BLACK);
@@ -42,7 +42,10 @@ void curses_init()
 	init_pair(5,COLOR_RED,COLOR_BLACK);
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_BLUE,COLOR_BLACK);
-        
+ 	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
+	wattrset(users_list.descriptor, COLOR_PAIR(3));       
+	wattrset(help_win.descriptor, COLOR_PAIR(3));       
+	wattrset(info_win.descriptor, COLOR_PAIR(3));       
 	cbreak();
         nodelay(stdscr,TRUE);
         scrollok(users_list.descriptor,TRUE);
@@ -54,75 +57,42 @@ void curses_end()
 	werase(help_win.descriptor);
 	wrefresh(help_win.descriptor);
 	endwin();
-        printf("\033[?25h");            /* enable cursor */
+//        printf("\033[?25h");            /* enable cursor */
 }
-
-#ifdef HAVE_MVWCHGAT
-void cursor_on(struct window *w, int line)
-{
-	mvwchgat(w->descriptor, line, 0, -1, CURSOR_COLOR, 0, 0);
-	touchline(w->descriptor, line, 1);
-	wnoutrefresh(w->descriptor);
-	doupdate();
-}
-
-void cursor_off(struct window *w, int line)
-{
-	mvwchgat(w->descriptor, line, 0, -1, NORMAL_COLOR, 0, 0);
-	touchline(w->descriptor, line, 1);
-	wnoutrefresh(w->descriptor);
-	doupdate();
-}
-#else
 
 // change it to dynamic!!!!
-static chtype curs_buf[128];
+static chtype curs_buf[256];
 
-void refresh_curs_buf(struct window *w, int line)
-{
-	chtype c;
-	int i;
-	for(i = 0; i < w->cols + 1; i++) 
-		curs_buf[i] = mvwinch(w->descriptor, line, i);
-	curs_buf[i] = 0;
-}
 void cursor_on(struct window *w, int line)
 {
 	chtype c;
 	int i;
 	wattrset(w->descriptor, A_REVERSE);
-	for(i = 0; i < w->cols + 1; i++) { 
+	for(i = 0; i <= w->cols; i++) { 
 		c = mvwinch(w->descriptor, line, i);
-		curs_buf[i] = c ;
+		curs_buf[i] = c;
 		waddch(w->descriptor, c & A_CHARTEXT);
 	}
 	curs_buf[i] = 0;
-	touchline(w->descriptor, line, 1);
-	wnoutrefresh(w->descriptor);
-	doupdate();
-//	wattrset(w->descriptor, A_BOLD);
+	wattrset(w->descriptor, A_BOLD);
 }
 
 void cursor_off(struct window *w, int line)
 {
-	chtype c;
 	int i;
 	wattrset(w->descriptor, A_NORMAL);
 	wmove(w->descriptor, line, 0);
 	for(i = 0; curs_buf[i]; i++) 
 		waddch(w->descriptor, curs_buf[i]);
 
-	touchline(w->descriptor, line, 1);
-	wnoutrefresh(w->descriptor);
-	doupdate();
-//	wattrset(w->descriptor, A_BOLD);
+	wattrset(w->descriptor, A_BOLD);
 }
-#endif
 
 void move_cursor(struct window *w, int from, int to)
 {
 	cursor_off(w, from);
 	cursor_on(w, to);
+	wrefresh(w->descriptor);
 }
 
 /*
@@ -174,7 +144,7 @@ int print_line(struct window *w, char *s, int line, int virtual)
 	if (real_line_nr(line, w) >=  w->rows) return 0;
 	if (!virtual) echo_line(w, s, real_line_nr(line, w));
 	
-/* printed line is at the cursor position */
+	/* printed line is at the cursor position */
 	if (real_line_nr(line, w) == w->cursor_line && !virtual)
 		cursor_on(w, w->cursor_line);
 
@@ -182,6 +152,7 @@ int print_line(struct window *w, char *s, int line, int virtual)
 	return 1;
 }
 
+///// clean it!! (giveme_line)
 void delete_line(struct window *w, int line)
 {
 	char *p = 0;
@@ -259,54 +230,118 @@ void virtual_delete_line(struct window *w, int line)
 
 void cursor_down(struct window *w)
 {
-	char *buf, *p;
+	char *buf;
 	if (!w->has_cursor) return;
 	if (w->cursor_line < w->rows - 1){
 		if (w->cursor_line == w->last_line) return;
-//		buf = w->giveme_line(w->cursor_line + w->first_line);
 		move_cursor(w, w->cursor_line, w->cursor_line + 1);
-//		echo_line(w, buf, w->cursor_line);
 		w->cursor_line++;
 	}
 /* cursor is at the bottom, check for lines, scroll screen, and print */
 	else if ((buf = w->giveme_line(w->first_line + w->rows))){
-//		cursor_off(w, w->cursor_line);
 		wscrl(w->descriptor, 1);
 		echo_line(w, buf, w->cursor_line);
 		w->first_line++; 
-//		p = w->giveme_line(w->cursor_line + w->first_line - 1);
-//		if (!p) return;
-//		echo_line(w, p, w->cursor_line - 1);
 		move_cursor(w,w->cursor_line-1, w->cursor_line);
-		wrefresh(w->descriptor);
-//		cursor_on(w, w->cursor_line);
+//		wrefresh(w->descriptor);
 	}
 }
 void cursor_up(struct window *w)
 {
-	char *buf, *p;
+	char *buf;
 	if (w->cursor_line){
-//		buf = w->giveme_line(w->cursor_line + w->first_line);
 		move_cursor(w, w->cursor_line, w->cursor_line-1);
-//		echo_line(w, buf, w->cursor_line);
 		w->cursor_line--;
 	}
 	/* cursor is at the top and there are more lines to show */
 	else if (!w->cursor_line && w->first_line){
 		buf = w->giveme_line(w->first_line - 1);
 		if (!buf) return;
-//		cursor_off(w, w->cursor_line);
 		wscrl(w->descriptor, -1);
 		w->first_line--;
 		echo_line(w, buf, w->cursor_line);
-//		p = w->giveme_line(w->first_line + w->cursor_line + 1);
-//		if (!p) return;
-//		echo_line(w, p, w->cursor_line + 1);
-//		cursor_on(w, w->cursor_line);
 		move_cursor(w, w->cursor_line+1, w->cursor_line);
-		wrefresh(w->descriptor);
+//		wrefresh(w->descriptor);
 		if (w->last_line < w->rows - 1) w->last_line++;
 	}
 	return;
 }
 
+void page_down(struct window *w, void (*refresh)())
+{
+	int z;
+	int i = w->d_lines - w->first_line - w->rows;
+	
+	/* no lines below visible screen */
+	if(i <= 0 && w->cursor_line == w->last_line)
+		return;
+	if(i <= 0) { 
+		move_cursor(w, w->cursor_line, w->last_line);
+		w->cursor_line = w->last_line;
+		return;
+	}
+	if(i >= w->rows) z = w->rows;
+	else z = i;
+	w->first_line += z;
+	(*refresh)();
+	wrefresh(w->descriptor);
+}
+
+void page_up(struct window *w, void (*refresh)())
+{
+	int z;
+	int i = w->first_line;
+	
+	/* no lines above visible screen */
+	if(!i && !w->cursor_line) return;
+	if(!i) {
+		move_cursor(w, w->cursor_line, w->first_line);
+		w->cursor_line = w->first_line;
+		return;
+	}
+	if(i >= w->rows) z = w->rows;
+	else z = i;
+	w->first_line -= z;
+	(*refresh)();
+	wrefresh(w->descriptor);
+}
+
+void key_home(struct window *w, void (*refresh)())
+{
+	int i = w->first_line;
+	
+	if(!i && !w->cursor_line) return; 
+	if(!i) {
+		move_cursor(w, w->cursor_line, w->first_line);
+		w->cursor_line = w->first_line;
+		return;
+	}
+	w->first_line = 0;
+	(*refresh)();
+	if(!w->cursor_line) return;
+	else {
+		move_cursor(w, w->cursor_line, w->first_line);
+		w->cursor_line = w->first_line;
+	}
+//	wrefresh(w->descriptor);
+}
+
+void key_end(struct window *w, void (*refresh)())
+{
+	int i = w->d_lines - w->first_line - w->rows;
+	if(i <= 0 && w->cursor_line == w->last_line)
+		return;
+	if(i <= 0) { 
+		move_cursor(w, w->cursor_line, w->last_line);
+		w->cursor_line = w->last_line;
+		return;
+	}
+	w->first_line += i;
+	(*refresh)();
+	if(w->cursor_line == w->last_line) return;
+	else {
+		move_cursor(w, w->cursor_line, w->last_line);
+		w->cursor_line = w->last_line;
+	}
+//	wrefresh(w->descriptor);
+}

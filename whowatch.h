@@ -42,14 +42,20 @@ extern int screen_rows, screen_cols;
 extern char *line_buf;
 extern int buf_size;
 
+/*
+ * Data associated with window are line numbered. If scrolling
+ * inside window occurs then number of first displayed line changes
+ * (first_line). 
+ */
 struct window
 {
 	unsigned int rows;
 	unsigned int cols;
-	int first_line;
+	int first_line;		/* nr of first displayed line	 	*/
 	int last_line;
-	int cursor_line;
-	int has_cursor;		/* not yet implemented */
+	int d_lines;		/* current total number of data lines 	*/
+	int cursor_line;	/* where is cursor		 	*/
+	int has_cursor;		/* not yet implemented    		*/
 	WINDOW *descriptor;
 	char *(*giveme_line) (int line);
 };
@@ -69,10 +75,10 @@ struct user_t
 {
 	struct user_t *next;
 	struct user_t *prev;
-        char name[UT_NAMESIZE + 1];
-        char tty[UT_LINESIZE + 1];
-        int prot;
-        int pid;
+        char name[UT_NAMESIZE + 1];	/* login name 		*/
+        char tty[UT_LINESIZE + 1];	/* tty			*/
+        int prot;			
+        int pid;			/* pid of login shell 	*/
 	char parent[16];
         char host[UT_HOSTSIZE + 1];
         int line;
@@ -92,6 +98,7 @@ extern int tree_pid;
 extern int how_many, ssh_users, telnet_users, local_users;
 
 void allocate_error();
+void users_list_refresh();
 
 /* process.c */
 void tree_periodic();
@@ -102,6 +109,8 @@ pid_t pid_from_tree(int line);
 void maintree(int pid);
 void tree_title(struct user_t *p);
 void clear_tree_title();
+void refresh_tree();
+char get_state_color(char);
 
 /* screen.c */								
 int print_line(struct window *w, char *s, int line, int virtual);
@@ -117,11 +126,11 @@ void cursor_up(struct window *w);
 void delete_line(struct window *w, int line);
 void virtual_delete_line(struct window *w, int line);
 
-#ifndef HAVE_MVWCHGAT
-void refresh_curs_buf(struct window *, int);
-#endif
-
 char *list_giveline(int line);
+void page_down(struct window *, void (*)());
+void page_up(struct window *, void (*)());
+void key_home(struct window *, void (*)());
+void key_end(struct window *, void (*)());
 
 /* proctree.c */
 int update_tree();

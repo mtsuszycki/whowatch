@@ -40,7 +40,7 @@ VERSION = @VERSION@
 
 bin_PROGRAMS = whowatch
 whowatch_SOURCES = whowatch.c whowatch.h process.c procinfo.c proctree.c \
-owner.c screen.c proctree.h
+owner.c screen.c proctree.h procinfo.h
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS)
@@ -68,3 +68,8 @@ whowatch: $(whowatch_OBJECTS) $(whowatch_DEPENDENCIES)
 clean: 
 	rm -rf ./*.o
 	rm -f whowatch
+distclean:
+	make clean
+	rm -rf *~ config.cache config.h config.log config.status
+	rm -rf Makefile debug
+

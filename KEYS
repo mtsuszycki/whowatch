@@ -13,10 +13,11 @@ when viewing processes tree:
 
 	cursor up,down - move cursor 
 		 enter - go back to users list
-		     i - view all system processes (tree from init)
+		     t - view all system processes (tree from init)
 		     o - display owner of each process
 	     Control I - send INT signal to selected process
 	     Control K - send KILL signal to selected process
+	PageUp, PageDown, Home, End
 
 ------------------------------------------------------------------------------
     	

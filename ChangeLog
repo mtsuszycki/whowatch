@@ -1,8 +1,11 @@
 
                              Whowatch changelog
+
+   April 2000
+   - ported to FreeBSD and OpenBSD, added PageUp,PageDown,Home,End keys,
+     changes for better performance     
                                       
    27 February 2000
-       
    - corrections in the man page, small bug fix, RPM package
        
    6 September 1999

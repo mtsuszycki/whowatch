@@ -3,7 +3,7 @@
 
 int allocated;
 int lines_before_curs;	/* how many lines was inserted before cursor */
-	
+
 static struct process *begin;
 
 void proc_del(struct process *p)
@@ -11,7 +11,8 @@ void proc_del(struct process *p)
 	*p->prev=p->next;				
 	if (p->next) p->next->prev = p->prev;
 	if (p->proc) p->proc->priv = 0;	
-	free(p);					
+	free(p);
+	proc_win.d_lines--;					
 	allocated--;					
 }
 
@@ -71,6 +72,7 @@ void synchronize()
 		z = malloc(sizeof *z);
 		if (!z) allocate_error();
 		allocated++;
+		proc_win.d_lines++;
 		memset(z, 0, sizeof *z);
 		check_line(l);
 		z->line = l++;
@@ -187,6 +189,7 @@ void tree_title(struct user_t *u)
         /* hide real cursor */
         wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
         wrefresh(info_win.descriptor);
+        wrefresh(proc_win.descriptor);
 }
 
 void clear_tree_title()
@@ -209,9 +212,6 @@ void tree_periodic()
 void maintree(int pid)
 {
 	struct process *p;
-#ifdef DEBUG
-int i = 1;
-#endif
 	if(!begin) {
 		WINDOW *w = proc_win.descriptor;
 		wmove(w, 0, 0);
@@ -225,21 +225,18 @@ int i = 1;
 		
 		/* it is above visible screen */
 		if(p->line < proc_win.first_line) continue;
-		
+
 		/* below visible screen */
 		if(p->line > proc_win.first_line + proc_win.rows - 1)
 			break;
 			
 		print_line(&proc_win,prepare_line(p), p->line, 0);
-#ifdef DEBUG
-i++;
-#endif
 	}
-#ifdef DEBUG
-fprintf(debug_file,"processes printed %d\n",i-1);
-fflush(debug_file);
-#endif
         /* hide real cursor */
         wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
 }
 
+void refresh_tree()
+{
+	maintree(tree_pid);
+}

@@ -20,11 +20,15 @@
 #define ut_user ut_name
 #endif
 
-enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, CTRL_I};
+enum key {  ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, CTRL_I,
+	   PG_DOWN, PG_UP, HOME, END };
+	   
 enum State{ USERS_LIST, PROC_TREE, INIT_TREE } state;
 
 struct window users_list, proc_win;
-struct window *windows[] = { &users_list, &proc_win, &proc_win };
+struct window *windows[] = { &users_list, &proc_win, &proc_win, 0 };
+void (*rfrsh[])() = { users_list_refresh, refresh_tree, refresh_tree };
+
 int screen_size_changed;	/* not yet implemented */
 
 struct list_head users = { &users, &users };
@@ -32,8 +36,6 @@ struct list_head users = { &users, &users };
 #ifdef DEBUG
 FILE *debug_file;
 #endif
-
-void segv_handler();
 
 int toggle = 0;		/* if 0 show cmd line else show idle time */
 int signal_sent;
@@ -65,7 +67,7 @@ int tree_pid = 1;
 int show_owner;		/* if 1 display processes owners		*/
 
 void show_cmd_or_idle();
-void dump_users();	/* for debugging				*/
+void dump_users();
 void cleanup();
 
 #ifdef HAVE_PROCESS_SYSCTL
@@ -73,7 +75,8 @@ int get_login_pid(char *);
 #endif
 
 #ifdef HAVE_LIBKVM
-void kvm_init();
+int kvm_init();
+int can_use_kvm = 0;
 #endif
 
 void allocate_error(){
@@ -177,6 +180,8 @@ void users_list_refresh()
 {
 	struct user_t *u;
 	for_each(u, users) print_user(u);
+	/* hide cursor */
+	wmove(users_list.descriptor, users_list.cursor_line, users_list.cols+1);
 	wrefresh(users_list.descriptor);
 }
 	
@@ -203,8 +208,9 @@ void read_utmp()
 #endif
 		u = allocate_user(&entry);
 		print_user(u);
-		update_nr_users(u->parent, &u->prot, LOGIN);		
-		how_many++;
+		update_nr_users(u->parent, &u->prot, LOGIN);
+		how_many ++;
+		users_list.d_lines = how_many;		
 		addto_list(u, users);
 	}
 	close(fd);
@@ -216,6 +222,7 @@ struct user_t* new_user(struct utmp *newone)
 {
 	struct user_t *u;
 	u = allocate_user(newone);
+	users_list.d_lines = how_many;
 	how_many++;
 	addto_list(u, users);
 	update_nr_users(u->parent, &u->prot, LOGIN);
@@ -273,6 +280,7 @@ void check_wtmp()
 			else virtual_delete_line(&users_list, u->line);
 			update_line_nr(u->line);
 			how_many--;
+			users_list.d_lines = how_many;
 			update_nr_users(u->parent, &u->prot, LOGOUT);
 			print_info();
 			delfrom_list(u, users);
@@ -302,7 +310,6 @@ char *users_list_giveline(int line)
 void periodic()
 {
 	/* always check wtmp for logins and logouts */
-//printf("\a");
 	check_wtmp();		
 	switch(state){
 		case INIT_TREE:
@@ -330,8 +337,20 @@ int read_key()
 		case 0x1B:
 			getc(stdin);
 			c = getc(stdin);
-			if (c == 0x41) return UP;
-			else if (c == 0x42) return DOWN;
+			switch(c) {
+				case 0x41: return UP;
+				case 0x42: return DOWN;
+				case 0x34:
+				case 0x38:
+				case 0x46: return END;
+				case 0x36:
+				case 0x47: return PG_DOWN;
+				case 0x31:
+				case 0x37:
+				case 0x48: return HOME;
+				case 0x35:
+				case 0x49: return PG_UP;
+			}
 			break;
 		default:
 			break;
@@ -395,93 +414,105 @@ void key_action(int key)
 	    signal_sent = 0;
 	}
 	switch(key){
-		case ENTER:
+	case ENTER:
+		werase(windows[state]->descriptor);
+		switch(state){
+		case USERS_LIST:
+			state = PROC_TREE;
+			print_help(state);
+			proc_tree_init();
+			p = cursor_user(
+				users_list.cursor_line +
+				users_list.first_line
+				);
+			if (!p) tree_pid = 1;
+			else tree_pid = p->pid; 
+			tree_title(p);
+			tree_periodic();
+			break;
+		case INIT_TREE:
+		case PROC_TREE:
+			state = USERS_LIST;
+			print_help(state);
+			clear_tree_title();
+			clear_list();
+			users_list_refresh();
+			break;
+		}
+		break;
+	case CTRL_I:
+		if (state < PROC_TREE) break;
+		pid = pid_from_tree(proc_win.cursor_line 
+				+ proc_win.first_line);
+		send_signal(2, pid);
+		tree_periodic();
+		break;
+	case CTRL_K:
+		if (state < PROC_TREE) break;
+		pid = pid_from_tree(proc_win.cursor_line 
+				+ proc_win.first_line);
+		send_signal(9, pid);
+		tree_periodic();
+		break;
+	case PG_DOWN:
+		page_down(windows[state], rfrsh[state]);
+		break;
+	case PG_UP:
+		page_up(windows[state], rfrsh[state]);
+		break;
+	case HOME:
+		key_home(windows[state], rfrsh[state]);
+		break;
+	case END:
+		key_end(windows[state], rfrsh[state]);
+		break;
+	case UP:
+		cursor_up(windows[state]);
+		wrefresh(windows[state]->descriptor);
+		break;
+	case DOWN:
+		cursor_down(windows[state]);
+		wrefresh(windows[state]->descriptor);
+		break;
+	case 'q': 
+		curses_end(); 
+		cleanup();	
+		free(line_buf);
+		exit(0);
+	case 't':
+		if (state < INIT_TREE){
 			werase(windows[state]->descriptor);
-			switch(state){
-				case USERS_LIST:
-					state = PROC_TREE;
-					print_help(state);
-					proc_tree_init();
-					p = cursor_user(
-						users_list.cursor_line +
-						users_list.first_line
-						);
-					if (!p) tree_pid = 1;
-					else tree_pid = p->pid; 
-					tree_title(p);
-					tree_periodic();
-					break;
-				case INIT_TREE:
-				case PROC_TREE:
-					state = USERS_LIST;
-					print_help(state);
-					clear_tree_title();
-					clear_list();
-					users_list_refresh();
-					break;
-			}
-			break;
-		case CTRL_I:
-			if (state < PROC_TREE) break;
-			pid = pid_from_tree(proc_win.cursor_line 
-				+ proc_win.first_line);
-			send_signal(2, pid);
+			proc_tree_init();
+			clear_list();
+			state = INIT_TREE;
+			print_help(state);
+			tree_pid = 1;
 			tree_periodic();
-			break;
-		case CTRL_K:
-			if (state < PROC_TREE) break;
-			pid = pid_from_tree(proc_win.cursor_line 
-				+ proc_win.first_line);
-			send_signal(9, pid);
-			tree_periodic();
-			break;
-		case UP:
-			cursor_up(windows[state]);
-			wrefresh(windows[state]->descriptor);
-			break;
-		case DOWN:
-			cursor_down(windows[state]);
-			wrefresh(windows[state]->descriptor);
-			break;
-		case 'q': 
-			curses_end(); 
-			cleanup();	
-			free(line_buf);
-			exit(0);
-		case 't':
-			if (state < INIT_TREE){
-				werase(windows[state]->descriptor);
-				proc_tree_init();
-				clear_list();
-				state = INIT_TREE;
-				print_help(state);
-				tree_pid = 1;
-				tree_periodic();
-				tree_title(0);
-			}
-			break;
-		case 'i': 
-			if (state != USERS_LIST) break;
-			toggle = toggle?0:1;
-			show_cmd_or_idle();
-			break;
-		case 'o':
-			if (state == USERS_LIST) break;
-			show_owner = show_owner?0:1;
-			tree_periodic();
+			tree_title(0);
+		}
+		break;
+	case 'i': 
+		if (state != USERS_LIST) break;
+		toggle = toggle?0:1;
+		show_cmd_or_idle();
+		break;
+	case 'o':
+		if (state == USERS_LIST) break;
+		show_owner = show_owner?0:1;
+		tree_periodic();
 /* ugly hack to force proper cursor display on older curses versions */
-cursor_off(&proc_win, proc_win.cursor_line);
-cursor_on(&proc_win, proc_win.cursor_line);
-			break;
+//cursor_off(&proc_win, proc_win.cursor_line);
+//cursor_on(&proc_win, proc_win.cursor_line);
+		break;
 #ifdef DEBUG
-		case 'd':
-			dump_list();
-			dump_users();
-			break;
+	case 'd':
+		dump_list();
+		dump_users();
+		break;
 #endif
-		case 'x':
-			restart();
-			break;
+	case 'x':
+		restart();
+		break;
 	}
 }
 
@@ -552,9 +583,7 @@ void int_handler()
 int main()
 {
 	struct timeval tv;
-//// fix configure script!
-//#ifndef RETURN_TV_IN_SELECT
-#ifndef linux
+#ifndef RETURN_TV_IN_SELECT
   	struct timeval before;
   	struct timeval after;
 #endif
@@ -562,7 +591,7 @@ int main()
 	int retval;
 	main_init();
 #ifdef HAVE_LIBKVM
-	kvm_init();
+	if (kvm_init()) can_use_kvm = 1;
 #endif
 	
 #ifdef DEBUG
@@ -574,10 +603,9 @@ int main()
 	get_rows_cols(&screen_rows, &screen_cols);
 	buf_size = screen_cols + screen_cols/2;
 	line_buf = malloc(buf_size);
-	if (!line_buf){
-		fprintf(stderr,"Cannot allocate memory for buffer.\n");
-		exit(0);
-	}
+	if (!line_buf)
+		errx(1, "Cannot allocate memory for buffer.");
+
 	curses_init();
 	windows_init();
 	
@@ -592,15 +620,13 @@ int main()
 	read_utmp();
 	print_help(state);
 	print_info();
-	
+
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
 	for(;;) {				/* main loop */
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);
-//#ifdef RETURN_TV_IN_SELECT
-// fix configure!
-#ifdef linux
+#ifdef RETURN_TV_IN_SELECT
 		retval = select(1,&rfds,0,0,&tv);
 		if(retval) {
 			int key = read_key();
@@ -633,25 +659,20 @@ void show_cmd_or_idle()
 	struct user_t *u;
 	int y, x;
 	for_each(u, users) {
-		if (u->line < q->first_line || u->line > q->last_line) 
+		if (u->line < q->first_line || 
+			u->line > q->first_line + q->rows - 1) 
 			continue;
-	        
 	        wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
-	        if(real_line_nr(u->line, q) == q->cursor_line)
-	        	wattrset(q->descriptor, A_REVERSE);
-	        else wattrset(q->descriptor, A_BOLD);
+		cursor_off(q, q->cursor_line);
+	        wattrset(q->descriptor, A_BOLD);
 		wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
 	        waddnstr(q->descriptor, toggle?count_idle(u->tty):get_w(u->pid),
-	            COLS - CMD_COLUMN - 1);
+	        	 COLS - CMD_COLUMN - 1);
 	        getyx(q->descriptor, y, x);
 		while(x++ < q->cols + 1)
 			waddch(q->descriptor, ' ');
+		cursor_on(q, q->cursor_line);
 		wmove(q->descriptor, q->cursor_line, q->cols + 1);
 	}
-#ifndef HAVE_MVWCHGAT
-//	refresh_curs_buf(q, q->cursor_line);
-		
-#endif
-//	cursor_on(q, q->cursor_line);
 	wrefresh(q->descriptor);
 }

@@ -260,6 +260,7 @@ int read_key()
 		if (retval){
 			c = getc(stdin);
 			switch (c){
+				case 0xD:
 				case 0xA: return ENTER;
 				case 0x1B:
 					getc(stdin);
@@ -315,6 +316,12 @@ void key_action(int key)
 	}
 }
 
+void bye()
+{
+	endprg();		/* restore terminal settings */
+	exit(0);
+}
+
 void main()
 {
 	struct user *f, *tmp;
@@ -331,6 +338,7 @@ void main()
 #endif	
 	read_utmp();
 	update_info();
+	signal(SIGINT, bye);
 #ifdef DEBUG
 	signal(SIGINT, show_u);
 	signal(SIGSEGV, show_u);

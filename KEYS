@@ -1,0 +1,12 @@
+KEYS:
+	cursor up,down - move cursor 
+			 (you can use it even if viewing tree)
+	enter	       - toggle between users list and processes tree
+	t - toggle between users idle time and their commands 
+	r - redraw
+	x - restart
+	q - quit
+	
+optional:
+	w -  to update list of processes (if compiled with -DNOAUTO)
+

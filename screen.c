@@ -47,10 +47,10 @@ void curses_init()
 	init_pair(5,COLOR_RED,COLOR_BLACK);
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_BLUE,COLOR_BLACK);
- //	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
-//	wattrset(users_list.descriptor, COLOR_PAIR(3));       
-//	wattrset(help_win.descriptor, COLOR_PAIR(3));       
-//	wattrset(info_win.descriptor, COLOR_PAIR(3));
+ 	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
+	wattrset(users_list.descriptor, COLOR_PAIR(3));       
+	wattrset(help_win.descriptor, COLOR_PAIR(3));       
+	wattrset(info_win.descriptor, COLOR_PAIR(3));
 	wbkgd(users_list.descriptor, COLOR_PAIR(3)); 
 	wbkgd(help_win.descriptor, COLOR_PAIR(3)); 
 	wbkgd(info_win.descriptor, COLOR_PAIR(3)); 

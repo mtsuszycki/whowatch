@@ -171,7 +171,7 @@ int update_tree(void del(void*))
 	el = get_all_info(&pi);
 	for(i = 0; i < el; i++) {
 		p = validate_proc(pi[i].kp_proc.p_pid);
-		q = validate_proc(pi[i].kp_eproc.e_ppid);		 		
+		q = validate_proc(pi[i].kp_eproc.e_ppid);
 #else
 
 	d=opendir(PROCDIR);

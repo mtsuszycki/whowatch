@@ -159,7 +159,7 @@ int get_all_info(struct kinfo_proc **info)
 
 	if(sysctl(mib, 3, 0, &len, 0, 0) == -1)
 		return 0;
-	*info = malloc(len);
+	*info = calloc(1, len);
 	if(!*info) return 0;
 	el = len/sizeof(struct kinfo_proc);
 	if(sysctl(mib, 3, *info, &len, 0, 0) == -1)

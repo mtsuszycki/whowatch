@@ -487,7 +487,7 @@ void key_action(int key)
 			clear_list();
 			state = INIT_TREE;
 			print_help(state);
-			tree_pid = 0; /* all processes */
+			tree_pid = 1; /* all processes */
 			tree_periodic();
 			tree_title(0);
 		}
@@ -621,7 +621,7 @@ int main()
 	
         signal(SIGINT, int_handler);
 /*	signal(SIGWINCH, winch_handler);   not yet implemented */
-	signal(SIGSEGV, segv_handler);
+//	signal(SIGSEGV, segv_handler);
 
 	wrefresh(users_list.descriptor);
 	read_utmp();

@@ -252,17 +252,27 @@ void maintree(int pid)
 		}
 		wattrset(mainw,A_NORMAL);
 		wprintw(mainw,"%5d",p->pid);
-		if (state == 'R')
-			chkcolor(COLOR_PAIR(2));
-		if (state == 'S')
-			state = ' ';
+		switch(state){
+			case 'R':
+				chkcolor(COLOR_PAIR(2));
+				break;
+			case 'Z':
+				chkcolor(COLOR_PAIR(3));
+				break;
+			case 'D':
+				chkcolor(COLOR_PAIR(5));
+				break;
+			default : 
+				state = ' ';
+				break;
+		}
 		wprintw(mainw," %c ",state);
 		
-		chkcolor(COLOR_PAIR(3));
+		chkcolor(COLOR_PAIR(4));
 		wprintw(mainw,"%s- ",buf);
 		chkcolor(A_NORMAL);
 		getyx(mainw, y, x);
-		waddnstr(mainw, get_cmdline(p->pid), COLS - x);
+		waddnstr(mainw, get_cmdline(p->pid), COLS - x - 1);
 		wprintw(mainw,"\n");
 		getyx(mainw, y, x);
 		if (y >= n) break;	/* end of the screen */

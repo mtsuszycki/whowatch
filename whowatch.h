@@ -21,7 +21,11 @@
 #define MAINW_LINES BOTTOM-TOP  /* number of the main window lines    	   */
 #define CMD_COLUMN 52		/* x position for printing procs or idle   */
 
+#define MAIN_INFO	0
+#define TREE_INFO	1
+
 extern WINDOW *mainw;
+extern int force_color;
 extern int how_many, telnet_users, ssh_users, local_users, toggle;
 extern int color;
 extern int cursor_line;		/* current cursor's position */
@@ -63,6 +67,7 @@ char *get_cmdline(int pid);
 char get_state(int pid);
 
 /* screen.c */
+void help_line(int which);
 void endprg();
 void update_info();
 void print_user();

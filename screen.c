@@ -1,7 +1,12 @@
 #include "whowatch.h"
 
+
 int color;
 void cursor_up();
+char *infos[]={ 
+	"enter - processes, t - command/idle, i - init tree, x - restart, q - quit",
+	"enter - users list, x - restart, q - quit"};
+	
 
 void endprg()
 {
@@ -13,12 +18,13 @@ void endprg()
 	printf("\033[?25h");		/* enable cursor */
 }
 
-void help_line()
+void help_line(int which)
 {
         if (color) attrset(COLOR_PAIR(1));
-	move( BOTTOM, 0);
-	addnstr("enter - users/proc, t - command/idle, i -"
-		" init tree, x - restart, q - quit", COLS);
+	move(BOTTOM, 0);
+	clrtoeol();
+	addnstr(infos[which], COLS);
+	refresh();
 }
 
 /*
@@ -30,8 +36,6 @@ void lst()
 	getyx(mainw,y,x);
 	attrset(A_NORMAL);
 	mvprintw(0,COLS-7,"%d user ",cursor_line + fline + 1);
-//	mvprintw(0,COLS-20,"c %d,ll %d,fl %d,l %d",cursor_line,lline,fline,lines);
-	
 	refresh();
 	wmove(mainw,y,x);
 }
@@ -42,17 +46,22 @@ void curses_init()
         mainw = newwin(MAINW_LINES,COLS,TOP,0);
         printf("\033[?25l");			/* disable cursor */
 	start_color();
-	        if (COLS < 80 || LINES < 10){
-	                 fprintf(stderr,"Terminal too small. I expect min. 80 columns and 10 lines.\n");  
-			 sleep(2);
-			 endprg();
-	                 exit(0);
-	          }
-	if (has_colors() == TRUE && can_change_color() == TRUE){
+        if (COLS < 80 || LINES < 10){
+                 fprintf(stderr,"Terminal too small. I expect min. 80 columns and 10 lines.\n");  
+		 sleep(2);
+		 endprg();
+                 exit(0);
+        }
+	if ((has_colors() == TRUE && can_change_color() == TRUE) ||
+		force_color){
  	       	color = 1;
-	        init_pair(1,COLOR_CYAN,COLOR_BLACK);/* for header info 	   */
-        	init_pair(2,COLOR_RED,COLOR_BLACK); /* for running process */
-		init_pair(3,COLOR_GREEN,COLOR_BLACK);
+	        init_pair(1,COLOR_CYAN,COLOR_BLACK);/*  header info */
+        	init_pair(2,COLOR_RED,COLOR_BLACK); /*  running process */
+		init_pair(3,COLOR_MAGENTA,COLOR_BLACK);/* zombie */
+		init_pair(4,COLOR_GREEN,COLOR_BLACK);/* tree */
+		init_pair(5,COLOR_YELLOW,COLOR_BLACK);/* stopped proc (D) */
+		
+
         }
 #ifdef NOCOLORS
         color = 0;
@@ -61,7 +70,7 @@ void curses_init()
         nodelay(stdscr,TRUE);
 	scrollok(mainw,TRUE);
         noecho();
-	help_line();
+	help_line(MAIN_INFO);
 /*
 	move(TOP-1,0);
 

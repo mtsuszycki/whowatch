@@ -15,7 +15,7 @@ int get_ppid(int pid)
         fclose(f);
         return ppid;
 }
-
+	
 /*
  * Get name of the process
  */														
@@ -61,14 +61,7 @@ char *get_cmdline(int pid)
 	}
 	fclose(f);
 	buff[i] = '\0';
-	if (!i){	/* 'cmdline' is empty - try 'stat' instead */
-		sprintf(buff,"/proc/%d/stat",pid);
-			if (!(f = fopen(buff,"rt")))
-               			return "-";
-		fscanf(f,"%*d %s",buff);	
-        	fclose(f);
-	}
-	return buff;
+	return i?buff:get_name(pid);
 }
 
 char *get_w(int pid)

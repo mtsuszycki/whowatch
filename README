@@ -12,8 +12,6 @@ Whowatch should compile on any Linux machine.
 To compile just type 'make'.
 
 You can edit whowatch.h and change few parameters:
-- disable automatic refresh of processes list (if you do this you can manually
-update the list by pressing 'w' key)
 - disable colors
 - change default locations of utmp and wtmp files.
 

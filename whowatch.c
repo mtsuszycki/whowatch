@@ -3,26 +3,16 @@
 #define UTMP 	"/var/run/utmp"
 #define WTMP 	"/var/log/wtmp"
 
-/* uncomment this if you want to disable automatic refresh of processes info.
-   (to safe CPU time)
-   In this case it can be done manually by pressing 'w' key.
-*/
-//#define NOAUTO 
-
 /* uncomment this if you don't want colors */
 //#define NOCOLOR 
 
-
 /* number of seconds before another attempt of reading wtmp*/
 #define TIMEOUT	3
-
-
 
 /*--------- end of user's configuration section -----------------------*/
 
 #define CMD_COLUMN 52
 
-FILE *debug_file;
 WINDOW *mainw;
 
 int toggle = 0;		/* if 0 show cmd line else show idle time */
@@ -42,6 +32,7 @@ int fdwtmp;		/* wtmp file descriptor */
 int proctree;	 	/* if 0 we show process tree else users list */
 int dont_scroll;	/* do not scroll up processes tree */
 int cursor_line;
+int force_color;
 
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC };
 
@@ -121,6 +112,7 @@ void read_utmp()		/* when program starts */
 	char *count;
 	
 	if ((fd = open(UTMP,O_RDONLY)) == -1){
+		endprg();
 		fprintf(stderr,"Cannot open " UTMP "\n");
 		exit (-1);
 	}
@@ -150,15 +142,8 @@ void read_utmp()		/* when program starts */
 		*current = tmp;
 		tmp->prev = current;
 		current = &tmp->next;
-#ifdef DEBUG
-		fprintf(debug_file,"%-8s %-5s (%-12d <- %-12d)%d\n",
-			tmp->name, tmp->tty,(int) *tmp->prev,(int) tmp,tmp->line);
-#endif
 	}
 	*current = NULL;
-#ifdef DEBUG
-	fflush(debug_file);
-#endif
 	close(fd);
 	return;
 }
@@ -214,11 +199,12 @@ void cleanup()
 void restart()
 {
 	cursor_line = how_many = ssh_users = telnet_users = local_users = 0;
-	dont_scroll = 0;
+	proctree = 0; dont_scroll = 0;
 	endwin();
 	curses_init();
 	read_utmp();
 	if ((fdwtmp = open(WTMP,O_RDONLY)) == -1){
+		endprg();
 		fprintf(stderr,"Cannot open " WTMP "\n");
 		exit (-1);
 	}
@@ -254,12 +240,16 @@ void key_action(int key)
 			werase(mainw);
 			wrefresh(mainw);
 			if (proctree){
+				help_line(TREE_INFO);
 				tree_pid = pid_from_cursor();
 				process_nr = 0;
 				dont_scroll = 0;
 				maintree(tree_pid);
 			}
-			else redraw();
+			else {
+				redraw();
+				help_line(MAIN_INFO);
+			}
 			break;	
 		case UP:
 			if (proctree && process_nr){
@@ -279,16 +269,10 @@ void key_action(int key)
 			else if (!proctree)			
 				cursor_down();
 			break;
-#ifdef NOAUTO
-		case 't': toggle = toggle?0:1;
-		case 'w': show_cmd_or_idle(toggle); 
-	  		break;
-#else
 		case 't': 
 			toggle = toggle?0:1;
 			show_cmd_or_idle(toggle);
 			break;
-#endif
 		case 'x':
 			cleanup();
 			restart();
@@ -303,11 +287,15 @@ void key_action(int key)
 			werase(mainw);
 			wrefresh(mainw);
 			if (proctree){
+				help_line(TREE_INFO);
 				tree_pid = 1;
 				process_nr = 0;
 				maintree(tree_pid);
 			}
-			else redraw();
+			else {
+				redraw();
+				help_line(MAIN_INFO);
+			}
 			break;	
 		default:
 			break;
@@ -327,7 +315,7 @@ void check_wtmp()
 	struct utmp entry;
 	while (read(fdwtmp, &entry,sizeof entry)){ 
 
-		/* type 7 is USER_PROCESS (user just log in)*/
+/* type 7 is USER_PROCESS (user just log in)*/
 		if (entry.ut_type == 7){
 			tmp = new_user(&entry);
 			if (in_scr(tmp->line)){
@@ -339,7 +327,7 @@ void check_wtmp()
 		}
 		if (entry.ut_type != 8) continue;
 		
-		/* type 8 is DEAD_PROCESS (user just logged out) */
+/* type 8 is DEAD_PROCESS (user just logged out) */
 		f = begin;
 		while(f){
 			if (strncmp(f->tty,entry.ut_line,UT_LINESIZE)) {
@@ -356,31 +344,44 @@ void check_wtmp()
 			free(f->name);
 			free(f->tty);
 			free(f);
+			return;
 		}
 	}
 }
 
-void main()
+void usage()
+{
+	printf("\nusage: whowatch [-c]\n\n-c,\tforce color mode\n");
+} 
+
+int main(int argc, char **argv)
 {
 	struct timeval tv;
 	fd_set rfds;
 	int retval;
 	
+	if (argc == 2)
+		if (!strcmp(argv[1],"-c")) force_color = 1;
+		else {
+			usage();
+			return(0);
+		}
+	else if (argc > 2){
+		usage();
+		return(0);
+	}
+	
 	curses_init();
 	bzero(clear_buf, sizeof clear_buf);
 	memset(clear_buf, ' ', sizeof clear_buf - 1);
-#ifdef DEBUG
-	if (!(debug_file = fopen("./wlogs","a"))){
-		perror("fopen");
-		exit (-1);
-	}
-#endif	
+	
 	read_utmp();
 	update_info();
 	update_tree();
 	signal(SIGINT, bye);
 
 	if ((fdwtmp = open(WTMP,O_RDONLY)) == -1){
+		endprg();
 		fprintf(stderr,"Cannot open " WTMP "\n");
 		exit (-1);
 	}
@@ -391,7 +392,8 @@ void main()
 		exit (0);
 	}
 	tv.tv_sec = TIMEOUT;
-	tv.tv_usec = 0;
+ 	tv.tv_usec = 0;
+/* main loop */
 	for(;;){
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);

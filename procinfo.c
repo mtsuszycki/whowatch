@@ -339,23 +339,64 @@ int getloadavg(double d[], int l)
 static inline void no_info(struct window *w)
 {
 	waddstr(w->wd, "Information unavailable.\n");
-	w->d_lines += 1;
+	w->d_lines++;
+}
+
+static inline char *_read_link(const char *path)
+{
+	static char buf[128];
+	bzero(buf, sizeof buf);
+	if(readlink(path, buf, sizeof buf) == -1)
+		return 0;
+	return buf;
 }
 
 static void read_link(struct window *w, int pid, char *name)
 {
-	char buf[128];
+	char *v;
 	char pbuf[32];
-	bzero(buf, sizeof buf);
 	snprintf(pbuf, sizeof pbuf, "/proc/%d/%s", pid, name); 
-	if(readlink(pbuf, buf, sizeof buf) == -1)
+	v = _read_link(pbuf);
+	if(!v) {
 		no_info(w);
-	else {
-		waddstr(w->wd, buf);
-		waddstr(w->wd, "\n");
-		w->d_lines++;
+		return;
 	}
+	waddstr(w->wd, v);
+	waddstr(w->wd, "\n");
+	w->d_lines++;
 }
+
+#include <ctype.h>
+
+static void get_net_conn(struct window *w, char *s)
+{
+	FILE *f;
+	char buf[127], *tmp;
+	int i;
+	unsigned int inode, l_inode;
+	tmp = strchr(s, ']');
+	if(!tmp) return;
+//write(1, "\a", 1);
+	*tmp = 0;
+	if(sscanf(s, "%d", &l_inode) != 1) return;
+	f = fopen("/proc/net/tcp", "r");
+	if(!f) return;
+	/* skip titles */
+	fgets(buf, sizeof buf, f);
+	while(fgets(buf, sizeof buf, f)) {
+		i = strlen(buf) - 1;
+		for(tmp = buf + i; isdigit(*tmp) && tmp>buf; tmp--);
+		if(sscanf(tmp, "%d", &inode) != 1) continue;
+		if(inode == l_inode) goto FOUND;
+	}
+	fclose(f);
+	return;
+FOUND:
+	fclose(f);
+	waddstr(w->wd, buf);
+	return;
+}
+		
 
 #include <sys/types.h>
 #include <dirent.h>
@@ -363,6 +404,7 @@ static void read_link(struct window *w, int pid, char *name)
 void open_fds(struct window *w, int pid, char *name)
 {
 	DIR *d;
+	char *s;
 	char buf[32];
 	struct dirent *dn;
 	snprintf(buf, sizeof buf, "/proc/%d/fd", pid);
@@ -375,8 +417,16 @@ void open_fds(struct window *w, int pid, char *name)
 		if(dn->d_name[0] == '.') continue;
 		waddstr(w->wd, dn->d_name);
 		waddstr(w->wd, " -> ");
-		snprintf(buf, sizeof buf, "/fd/%s", dn->d_name);
-		read_link(w, pid, buf);
+		snprintf(buf, sizeof buf, "/proc/%d/fd/%s", pid, dn->d_name);
+		s = _read_link(buf);
+		if(!s) no_info(w);
+		else {
+			waddstr(w->wd, s);
+	//		if(!strncmp("socket:[", s, 8))
+	//			get_net_conn(w, s+8);
+			waddstr(w->wd, "\n");
+			w->d_lines++;
+		}	
 	}
 	closedir(d);
 }
@@ -551,7 +601,7 @@ static inline void print_boot_time(struct window *w)
 }
 
 struct cpu_info_t {
-	unsigned long long  u_mode, nice, s_mode, idle;
+	unsigned long long u_mode, nice, s_mode, idle;
 };
 
 static struct cpu_info_t c_info, p_info, eff_info;
@@ -587,10 +637,10 @@ FOUND:
 	return 0;
 }
 
-static inline double prcnt(unsigned long i, unsigned long v)
+static inline float prcnt(unsigned long i, unsigned long v)
 {
 	if(!v) return 0;
-	return ((double)(i*100))/(double)v;
+	return ((float)(i*100))/(float)v;
 }
 
 static void get_cpu_info(struct window *w)

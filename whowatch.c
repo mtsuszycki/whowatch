@@ -27,8 +27,11 @@ FILE *debug_file;
 
 int d_win_rows;
 
-enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, 
-		CTRL_I, PG_DOWN, PG_UP, HOME, END };
+//enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, 
+//		CTRL_I, PG_DOWN, PG_UP, HOME, END };
+
+enum key { ENTER=KEY_MAX + 1, ESC, CTRL_K, CTRL_I };
+
 enum State { USERS_LIST, PROC_TREE, INIT_TREE } state;
 
 struct window users_list, proc_win;
@@ -42,7 +45,7 @@ int screen_size_changed;	/* not yet implemented */
 
 struct list_head users = { &users, &users };
 
-void (*current_keys)(int key);
+static int (*current_keys)(int key);
 
 int toggle;		/* if 0 show cmd line else show idle time 	*/
 int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
@@ -195,7 +198,7 @@ void users_list_refresh()
 	struct user_t *u;
 	for_each(u, users) print_user(u);
 	/* hide cursor */
-	wmove(users_list.wd, users_list.cursor_line, users_list.cols+1);
+//	wmove(users_list.wd, users_list.cursor_line, users_list.cols+1);
 //	wrefresh(users_list.wd);
 }
 	
@@ -352,19 +355,21 @@ static int do_info;
 
 static int arrow_line;
 
+//static inline void refresh_details(struct window *);
+static void print_details(struct window *);
 void send_signal(int, pid_t);
 
 /*
  * Signal list window handles differently 'a' and 'z' keys. 
  */
-static inline void handle_arrow(struct window *w, int key, int p)
+static int handle_arrow(struct window *w, int key, int p)
 {
 	static int pid;
 	if(p != -1) pid = p;
-	if(!key) {
-		mvwaddstr(w->wd, arrow_line, 0, "->");
-		return;
-	}
+//	if(!key) {
+//		mvwaddstr(w->wd, arrow_line, 0, "->");
+//		return 0;
+//	}	
 	switch(key) {
 	case 'z':
 		if(arrow_line < d_win.d_lines-1) 
@@ -378,12 +383,17 @@ static inline void handle_arrow(struct window *w, int key, int p)
 		if(arrow_line == w->first_line - 1) w->first_line--;
 		break;
 	case 'y':
-		if(pid == -1) return;
+		if(pid == -1) return 0;
 		send_signal(signals[arrow_line].sig, pid);
 		tree_periodic();
+		wnoutrefresh(proc_win.wd);
 		break;
-	default: return;
+	default: return 0;
 	}
+	mvwaddstr(w->wd, arrow_line, 0, "->");
+	wnoutrefresh(w->wd);
+	doupdate();
+	return 1;
 }
 
 static inline void clear_hint()
@@ -399,9 +409,15 @@ static void list_signals(struct window *w, int pid)
 	int size = sizeof signals/sizeof (struct signal_t);
 	char buf[16];
 	int i;
-	snprintf(buf, sizeof buf, " PID %d", pid);
 	clear_hint();
+	if(!pid) {
+		wattrset(w->wd, COLOR_PAIR(9));
+		mvwaddstr(w->wd, 0, 3, "No valid pid selected.");
+		wattrset(w->wd, COLOR_PAIR(8));
+		return;
+	}		
 	wattrset(d_hint, COLOR_PAIR(9));
+	snprintf(buf, sizeof buf, " PID %d", pid);
 	mvwaddstr(d_hint, 0, 1, buf);
 	waddstr(d_hint,  " - choose signal and press 'y' to send");
 	wattrset(d_hint, COLOR_PAIR(8));
@@ -415,6 +431,7 @@ static void list_signals(struct window *w, int pid)
 	handle_arrow(w, 0, pid);
 }
 
+static void print_details(struct window *);
 
 static void create_details()
 {
@@ -428,7 +445,8 @@ static void create_details()
 	d_hint = newwin(d_win.rows - D_WIN_Y + 3, 
 		d_win.cols - D_WIN_X + 3, D_WIN_Y - 1, D_WIN_X - 1);
 	if(!d_hint) prg_exit("Cannot create hint window.");
-//	overwrite(proc_win.wd, d_hint);
+	overwrite(proc_win.wd, d_hint);
+	overwrite(proc_win.wd, d_win.wd);
 	wbkgd(d_win.wd, COLOR_PAIR(8));
 	wbkgd(d_hint, COLOR_PAIR(8));
 	clear_hint();
@@ -447,6 +465,7 @@ static inline void rm_details()
  */
 static inline void refresh_details(struct window *w)
 {
+assert(w->wd);
 //char buf[32];
 	/* for list signal window we have to handle arrow sign */
 //	if(current_d == list_signals) handle_arrow(w);
@@ -499,6 +518,7 @@ static void print_details(struct window *w)
 	}
 	werase(w->wd);
 	w->d_lines = 0;
+//write(1, "\a", 1);	
 	current_d(w, pid);
 SKIP:	
 	refresh_details(w);
@@ -523,20 +543,24 @@ void periodic()
 		break;
 	}
 	wnoutrefresh(proc_win.wd);
+//	wnoutrefresh(d_hint);
+clear_hint();
 	do_info = 1;
-	print_details(&d_win);
+	if(d_win.wd) print_details(&d_win);
 	doupdate();
 }
 
 int read_key()
 {
 	int c;
-	c = getc(stdin);
+//	c = getc(stdin);
+	c = wgetch(info_win.wd);
 	switch (c){
 		case 0xD:
 		case 0xA: return ENTER;
 		case 0xB: return CTRL_K;
 		case 0x9: return CTRL_I;
+/*
 		case 0x1B:                                                            
 			getc(stdin);                                                  
 			c = getc(stdin);                                              
@@ -555,6 +579,7 @@ int read_key()
 				case 0x49: return PG_UP;
 			}        		
 			break;          
+*/
 		default:
 			break;
 	}
@@ -625,11 +650,9 @@ void proctree_start(enum State s)
 	updatescr(&proc_win);
 }	
 
+static int  proc_key(int); 
 
-
-void proc_key(int); 
-
-void ulist_key(int key)
+static int ulist_key(int key)
 {
 	switch(key) {
 	case ENTER:
@@ -646,15 +669,18 @@ void ulist_key(int key)
 		show_cmd_or_idle();
 		updatescr(&users_list);
 		break;
+	default: return 0;	
 	}
+	wnoutrefresh(proc_win.wd);
+	if(d_win.wd) refresh_details(&d_win);
+	doupdate();
+	return 1;
 }
 
-static void details_key(int key)
+static int details_key(int key)
 {
-	if(current_d == list_signals) {
-		 handle_arrow(&d_win, key, -1);
-		 return;
-	}	 
+	if(current_d == list_signals)
+		return handle_arrow(&d_win, key, -1);
 	switch(key) {
 	case 'z':
 		if((d_win.first_line+d_win.rows-D_WIN_Y+1) < d_win.d_lines) 
@@ -663,16 +689,17 @@ static void details_key(int key)
 	case 'a':
 		if(d_win.first_line) d_win.first_line--;
 		break;
+	default: return 0;
 	}
+	return 1;
 }
 
 /*
  * Keys specific to process tree window
  */
-void proc_key(int key) 
+static int proc_key(int key) 
 {
-	int pid;
-	int signal = 0;
+	int pid, signal = 0;
 	switch(key) {
 	case ENTER:
 		werase(windows[state]->wd);
@@ -682,7 +709,7 @@ void proc_key(int key)
 		print_help(state);
 		clear_tree_title();
 		clear_list();
-		users_list_refresh();		
+		users_list_refresh();
 		break;
 	case CTRL_I:
 		signal = 2;
@@ -692,23 +719,32 @@ void proc_key(int key)
 				+ proc_win.first_line);
 		send_signal(signal, pid);
 		tree_periodic();
+		/* get details - pid on cursor probably had changed */
+		print_details(&d_win);
 		break;
 	case 'o':
 		show_owner ^= 1;
 		refresh_tree();
-//		wrefresh(proc_win.wd);
 		break;
 	case 't':
 		proctree_start(INIT_TREE);
 		current_keys = proc_key;
+		print_details(&d_win);
 		break;
 	case 'd':
 		handle_d_win(proc_details);
+		print_details(&d_win);
 		break;
 	case 'l':
 		handle_d_win(list_signals);
+		print_details(&d_win);
 		break;
+	default: return 0;	
 	}
+	wnoutrefresh(proc_win.wd);
+	if(d_win.wd) refresh_details(&d_win);
+	doupdate();
+	return 1;
 }
 
 /*
@@ -720,24 +756,32 @@ void key_action(int key)
 	    print_help(state);
 	    signal_sent = 0;
 	}
-	current_keys(key);
+	if((d_win.wd && details_key(key) == 1)) {
+		refresh_details(&d_win);
+		doupdate();
+		return;
+	}
+	if(current_keys(key) == 1) return;
 	switch(key) {
-	case PG_DOWN:
+	case KEY_NPAGE:
+//	case PG_DOWN:
 		page_down(windows[state], rfrsh[state]);
 		break;
-	case PG_UP:
+	case KEY_PPAGE:		
+//	case PG_UP:
 		page_up(windows[state], rfrsh[state]);
 		break;
-	case HOME:
+	case KEY_HOME:
+//	case HOME:
 		key_home(windows[state], rfrsh[state]);
 		break;
-	case END:
+	case KEY_END:
 		key_end(windows[state], rfrsh[state]);
 		break;
-	case UP:
+	case KEY_UP:
 		cursor_up(windows[state]);
 		break;
-	case DOWN:
+	case KEY_DOWN:
 		cursor_down(windows[state]);
 		break;
 	case 'q': 
@@ -749,7 +793,10 @@ void key_action(int key)
 		full_cmd ^= 1;
 		(*rfrsh[state])(); 
 		updatescr(&proc_win);
-		break;
+		wnoutrefresh(users_list.wd);
+		refresh_details(&d_win);
+		doupdate();
+		return;
 	case 's':
 		handle_d_win(sys_info);
 		break;
@@ -762,10 +809,12 @@ void key_action(int key)
 //	case 'x':
 //		restart();
 //		break;
+	default: return;
 	}
-	if(d_win.wd) details_key(key);
 	wnoutrefresh(proc_win.wd);
+clear_hint();
 	print_details(&d_win);
+//refresh_details(&d_win);
 	doupdate();
 }
 

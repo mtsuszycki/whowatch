@@ -11,8 +11,8 @@ int old_curs_vis = 1;	/* this is the cursor mode, set to normal as default */
 char *help_line[] = 
 	{
 	"\001ENTER:proc_tree t:init_tree i:idle/cmd c:cmd s:sysinfo q:quit",
-	"\001ENTER:users c:cmd t:init_tree d:details o:owner s:sysinfo ^I:INT ^K:KILL l:siglist",
-	"\001ENTER:users c:cmd d:details o:owner s:sysinfo ^I:INT ^K:KILL l:siglist",
+	"\001ENTER:users c:cmd t:init_tree d:details o:owner s:sysinfo l:siglist ^K:KILL ",
+	"\001ENTER:users c:cmd d:details o:owner s:sysinfo l:siglist ^K:KILL t",
 	};
 
 void curses_init()

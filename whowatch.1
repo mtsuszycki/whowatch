@@ -1,4 +1,4 @@
-.TH WHOWATCH 1 "Aug 14 1999"
+.TH WHOWATCH 1 "27 Feb 2000"
 .SH NAME
 whowatch \- watch logged users in real time
 .SH DESCRIPTION
@@ -19,20 +19,35 @@ All action is performed in real time by pressing following keys:
 .PP
 Users list mode:
 .PP
-.nf
-up, down - cursor movement
-t - toggle between user command line and idle time
-enter - view selected user's processes tree.
-i - all system processes (init tree)
+.TP
+.B 'up' 'down'
+cursor movement
+.TP
+.B 't'
+toggle between user command line and idle time
+.TP
+.B 'enter'
+view selected user's processes tree.
+.TP
+.B 'i'
+all system processes (init tree)
 .PP
 Tree mode:
-.PP
-.nf
-up, down - cursor movement
-enter - go back to users list
-o - show processes owners
-Ctrl-I - send INT signal to selected process
-Ctrl-K - send KILL signal to selected process
+.TP
+.B 'up' 'down'
+cursor movement
+.TP
+.B 'enter'
+go back to users list
+.TP
+.B 'o' 
+show processes owners
+.TP
+.B 'Ctrl-I'
+send INT signal to selected process
+.TP
+.B 'Ctrl-K'
+send KILL signal to selected process
 
 .SH FILES
 Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR and files from

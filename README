@@ -1,4 +1,4 @@
-Whowatch 1.3
+Whowatch 1.3.1
 
 Whowatch is Linux ncurses who-like utility that displays informations about 
 the users currently logged on to the machine, in real time. 
@@ -25,13 +25,6 @@ Notes:
   xterms whowatch still will be displaying four xterm logins. You have to 
   press 'x' key to update data.
 
-- Whowatch is not portable to other platforms mainly because of utmp/wtmp 
-  entry format.
-  AFAIK only linux utmp/wtmp entry has all information needed, ie. pid of the
-  login shell, host name for remote login and type of login.
-  If you have some ideas how to port the program to other platform please
-  drop me a note.
-  
 author: Michal Suszycki 
 	
 	mike@wizard.ae.krakow.pl	

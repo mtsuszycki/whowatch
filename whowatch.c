@@ -455,6 +455,7 @@ void key_action(int key)
 			exit(0);
 		case 'i':
 			if (state < INIT_TREE){
+				werase(windows[state]->descriptor);
 				proc_tree_init();
 				clear_list();
 				state = INIT_TREE;

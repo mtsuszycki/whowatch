@@ -49,9 +49,11 @@ void get_info(int pid, struct procinfo *p)
     	snprintf(buf, sizeof buf, "/proc/%d/stat", pid);
     	if (!(f = fopen(buf,"rt"))) 
     		return;
-    	if(fscanf(f,"%*d %s %*c %d %*d %*d %*d %d",
-    			p->exec_file, &p->ppid, &p->tpgid) != 3)
+    	if(fscanf(f,"%*d %128s %*c %d %*d %*d %*d %d",
+    			p->exec_file, &p->ppid, &p->tpgid) != 3) {
+    		fclose(f);
     		return;
+    	}
     	fclose(f);	
 	p->exec_file[EXEC_FILE] = '\0';
 }
@@ -116,7 +118,8 @@ int get_term(char *tty)
  */
 int get_login_pid(char *tty)
 {
-	int mib[4], len, t, el, i, pid;
+	int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_TTY, 0};
+	int len, t, el, i, pid, cndt = -1, l;
 	struct kinfo_proc *info;
 	struct procinfo p;
 	
@@ -124,29 +127,35 @@ int get_login_pid(char *tty)
 	if(!strncmp(tty, "ftp", 3)) 
 		return atoi(tty+3);
 		
-	t = get_term(tty);
-	if(t == -1) return -1;
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_PROC;
-	mib[2] = KERN_PROC_TTY;
+	if((t = get_term(tty)) == -1) return -1;
 	mib[3] = t;
 	if(sysctl(mib, 4, 0, &len, 0, 0) == -1)
 		return -1;
-	info = malloc(len);
+	info = calloc(1, len);
 	if(!info) return -1;
 	el = len/sizeof(struct kinfo_proc);
 	if(sysctl(mib, 4, info, &len, 0, 0) == -1)
 		return -1;
 	for(i = 0; i < el; i++) {
-		pid = info[i].kp_proc.p_pid;
+		if(!(pid = info[i].kp_proc.p_pid)) continue;
 		get_info(get_ppid(pid), &p);
 		if(p.cterm == -1 || p.cterm != t) {
-			free(info);
-			return pid;
+			cndt = pid;
+			l = strlen(info[i].kp_proc.p_comm);
+			/*
+			 * This is our best match: parent of the process
+			 * doesn't have controlling terminal and process'
+			 * name ends with "sh"
+			 *
+			 */
+			if(l > 1 && !strncmp("sh",info[i].kp_proc.p_comm+l-2,2)) {
+				free(info);
+				return pid;
+			}
 		}
 	}
 	free(info);
-	return -1;
+	return cndt;
 }
 
 /*
@@ -278,6 +287,10 @@ void get_state(struct process *p)
 	char s[] = "FR DZ";
 	get_info(p->proc->pid, &pi);
 	p->uid = pi.euid;
+	if(pi.stat == ' ') {
+		p->state = '?';
+		return;
+	}
 	p->state = s[pi.stat-1];
 }
 #else
@@ -308,22 +321,19 @@ void get_state(struct process *p)
 char *count_idle(char *tty)
 {
 	struct stat st;
-	static char buf[256];
+	static char buf[32];
 	time_t idle_time;
 	
 	sprintf(buf,"/dev/%s",tty);
 	
-	if (stat(buf,&st) == -1) return "?";
+	if(stat(buf,&st) == -1) return "?";
 	idle_time = time(0) - st.st_atime;	
 	
 	if (idle_time >= 3600 * 24) 
 		sprintf(buf,"%ldd",idle_time/(3600 * 24) );
 	else if (idle_time >= 3600){
 		time_t min = (idle_time % 3600) / 60;
-		if (min < 10)
-			sprintf(buf,"%ld:0%ld", idle_time/3600, min);
-		else
-			sprintf(buf,"%ld:%ld", idle_time/3600, min);
+		sprintf(buf,"%ld:%02ld", idle_time/3600, min);
 	}
 	else if (idle_time >= 60)
 		sprintf(buf,"%ld",idle_time/60);

@@ -38,7 +38,8 @@ void curses_init()
 	}
 
 	wattrset(users_list.descriptor, A_BOLD);
-//        printf("\033[?25l");                    /* disable cursor */
+        printf("\033[?25l");                    /* disable cursor */
+
         start_color();
 	init_pair(1,COLOR_CYAN,COLOR_BLACK);
         init_pair(2,COLOR_GREEN,COLOR_BLACK);
@@ -66,10 +67,8 @@ void curses_end()
 	werase(help_win.descriptor);
 	wrefresh(help_win.descriptor);
 	endwin();
-//        printf("\033[?25h");            /* enable cursor */
+        printf("\033[?25h");            /* enable cursor */
 }
-
-// change it to dynamic!!!!
 
 void cursor_on(struct window *w, int line)
 {
@@ -112,6 +111,8 @@ int echo_line(struct window *w, char *s, int line)
 	int i = 0;
 	if (!p) return 1;
 	wmove(w->descriptor, line, 0);
+//waddstr(w->descriptor, s);
+//return;
 	wclrtoeol(w->descriptor);
 	while(*p){
 		if (i > w->cols) break;
@@ -149,6 +150,7 @@ void print_info()
  */	
 int print_line(struct window *w, char *s, int line, int virtual)
 {
+	/* line is below screen */
 	if (real_line_nr(line, w) >=  w->rows) return 0;
 	if (!virtual) echo_line(w, s, real_line_nr(line, w));
 	
@@ -164,7 +166,7 @@ int print_line(struct window *w, char *s, int line, int virtual)
 void delete_line(struct window *w, int line)
 {
 	char *p = 0;
-/* line is below visible screen */
+	/* line is below visible screen */
 	if (real_line_nr(line, w) > w->last_line) return;
 	
 	if (line < w->first_line){
@@ -174,7 +176,7 @@ void delete_line(struct window *w, int line)
 	wmove(w->descriptor, real_line_nr(line, w), 0);
 	wdeleteln(w->descriptor);
 	
-/* if there is a line below visible screen display it */
+	/* if there is a line below visible screen display it */
 	if (w->last_line){
 		if ((p = w->giveme_line(w->last_line + w->first_line + 1)))
 			echo_line(w, p, w->last_line);
@@ -210,10 +212,10 @@ void delete_line(struct window *w, int line)
 void virtual_delete_line(struct window *w, int line)
 {
 	char *p = 0;
-/* line is below visible screen */
+	/* line is below visible screen */
 	if (real_line_nr(line, w) > w->last_line) return;
 	
-/* line is above visible screen */
+	/* line is above visible screen */
 	if (line < w->first_line){
 		w->first_line--;
 		return;

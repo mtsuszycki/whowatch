@@ -63,7 +63,6 @@ void synchronize()
 		if (*current && p->priv){
 			(*current)->line = l++;
 			(*current)->proc->priv = *current;
-//			get_state(*current);
 			p = tree_next();
 			current = &((*current)->next);
 			continue;
@@ -77,7 +76,6 @@ void synchronize()
 		z->line = l++;
 		(struct process *) p->priv = z;
 		z->proc = p;
-//		get_state(z);
 		if (*current){
 			z->next = *current;
 			(*current)->prev = &z->next;
@@ -198,6 +196,7 @@ void clear_tree_title()
 	wclrtoeol(w);
 	wrefresh(w);
 }
+
 void tree_periodic()
 {
 	update_tree(mark_del);
@@ -227,7 +226,6 @@ void maintree(int pid)
 		/* below visible screen */
 		if(p->line > proc_win.first_line + proc_win.rows - 1)
 			break;
-			
 		print_line(&proc_win,prepare_line(p), p->line, 0);
 	}
         /* hide real cursor */

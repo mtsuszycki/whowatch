@@ -1,5 +1,5 @@
 
-#define TREE_DEPTH 12
+#define TREE_DEPTH 32
 #define TREE_STRING_SZ (2 + 2*TREE_DEPTH)
 
 struct plist {

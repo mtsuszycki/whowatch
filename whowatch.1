@@ -1,8 +1,8 @@
 .TH WHOWATCH 1 "27 Feb 2000"
 .SH NAME
-whowatch \- watch logged users in real time
+whowatch \- watch logged in users and processes in real time
 .SH DESCRIPTION
-\fBWhowatch\fR is a ncurses who-like utility that displays information 
+\fBWhowatch\fR is an interactive ncurses who-like utility that displays information 
 about the users currently logged on to the machine, in real-time.
 Besides standard informations (login name, tty, host, user's process),
 the type of the connection (ie. telnet or ssh) is shown.
@@ -27,7 +27,8 @@ cursor movement
 toggle between user command line and idle time
 .TP
 .B 'c'
-full command line on/off
+full command line on/off. Disabling full command line can save CPU time.
+It can give you also some additional information about process executable.
 .TP
 .B 'enter'
 view selected user's processes tree.
@@ -47,7 +48,8 @@ go back to users list
 show processes owners
 .TP
 .B 'c' 
-full command line on/off
+full command line on/off. Disabling full command line can save CPU time.
+It can give you also some additional information about process executable.
 .TP
 .B 'Ctrl-I'
 send INT signal to selected process
@@ -56,7 +58,8 @@ send INT signal to selected process
 send KILL signal to selected process
 
 .SH FILES
-Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR and files from
+Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR. Under Linux program
+also reads files from
 \fI/proc\fR directory. Without read access to these files \fBwhowatch\fR
 funcionality will be limited or program will not even start.
 
@@ -67,6 +70,13 @@ funcionality will be limited or program will not even start.
 .BR pstree (1),
 .BR top (1),
 .BR w (1),
+
+.SH "BUGS"
+Because lack of ut_pid in utmp and wtmp structures
+in *BSD systems, program tries to obtain pid of a login shell by analizing
+processes controlling terminal and processes names. Under some conditions
+it may lead to incorrect results ie. there will be incorrect processes
+tree associated with user's session. 
 
 .SH AUTHOR
 .nf

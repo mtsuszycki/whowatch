@@ -23,8 +23,7 @@ when viewing processes tree:
 
 ------------------------------------------------------------------------------
     	
-x - refresh, force to read utmp file once again if for some reason
-    there is an user on display which logged out from the system.
+x - refresh, force to read utmp file once again
 q - quit
 	
 You don't have to remember all of these because there is a short help line

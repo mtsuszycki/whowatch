@@ -1,3 +1,6 @@
+   Mar 2001
+   - added window with process' details (cwd, exe, memory information etc.)
+   
    May 2000
    - added 'c' key in processes tree, load averages info, code for proper 
      handling ftp logins, bug fixes

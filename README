@@ -4,5 +4,5 @@ Besides standard information (login, tty, host, user's process) you can
 see type of login (ie. ssh, telnet). You can also see selected user's 
 processes tree or all system processes tree.
 In the process tree mode there is ability to send INT or KILL signal to
-selected process.
+selected process and to display process' status informations.
 

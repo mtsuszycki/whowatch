@@ -201,6 +201,8 @@ void tree_periodic()
 	maintree(tree_pid);
 }
 
+extern WINDOW *dialog;
+
 void maintree(int pid)
 {
 	struct process *p;

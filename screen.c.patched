@@ -10,9 +10,9 @@ int old_curs_vis = 1;	/* this is the cursor mode, set to normal as default */
 
 char *help_line[] = 
 	{
-	"\001enter:proc_tree t:init_tree i:idle/cmd c:cmd x:refresh q:quit",
-	"\001enter:users c:cmd t:init_tree i:details o:owner ^I:send INT ^K:send KILL",
-	"\001enter:users_list c:cmd i:details o:owner ^I:send INT ^K:send KILL",
+	"\001enter - proc tree, t - init tree, i - idle/cmd, c - cmd, x - refresh, q - quit",
+	"\001enter - users, c - cmd, t - init, o - owner, ^I - send INT, ^K - send KILL",
+	"\001enter - users list, c - cmd, o - owner, ^I - send INT, ^K - send KILL",
 	};
 
 void curses_init()
@@ -94,6 +94,7 @@ void cursor_off(struct window *w, int line)
 	wmove(w->wd, line, 0);
 	for(i = 0; curs_buf[i]; i++) 
 		waddch(w->wd, curs_buf[i]);
+
 	wattrset(w->wd, A_BOLD);
 }
 
@@ -101,7 +102,7 @@ void move_cursor(struct window *w, int from, int to)
 {
 	cursor_off(w, from);
 	cursor_on(w, to);
-//	wrefresh(w->wd);
+	wrefresh(w->wd);
 }
 
 /*

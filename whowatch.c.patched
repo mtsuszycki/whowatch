@@ -4,8 +4,6 @@
 #include "whowatch.h"
 #include "config.h"
 
-#include <panel.h>
-
 #ifndef UTMP_FILE
 #define UTMP_FILE 	"/var/run/utmp"
 #endif
@@ -26,10 +24,9 @@ FILE *debug_file;
 #define ut_user ut_name
 #endif
 
-WINDOW *d_win;
+WINDOW *dialog;
 
-enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, 
-		CTRL_I, PG_DOWN, PG_UP, HOME, END };
+enum key { ENTER=KEY_MAX + 1, ESC, CTRL_K, CTRL_I };
 enum State { USERS_LIST, PROC_TREE, INIT_TREE } state;
 
 struct window users_list, proc_win;
@@ -140,6 +137,7 @@ struct user_t *allocate_user(struct utmp *entry)
 #else
 	u->pid = get_login_pid(u->tty);
 #endif
+
  	if((ppid = get_ppid(u->pid)) == -1)
 		strncpy(u->parent, "can't access", sizeof u->parent);
 	else 	strncpy(u->parent, get_name(ppid), sizeof u->parent - 1);
@@ -290,7 +288,6 @@ void check_wtmp()
 			update_nr_users(u->parent, &u->prot, LOGOUT);
 			print_info();
 			delfrom_list(u, users);
-			free(u);
 			break;
 		}
 	}
@@ -324,24 +321,16 @@ void periodic()
 		case INIT_TREE:
 			tree_periodic();
 			tree_title(0);
-if(d_win) get_details(d_win);
-//			updatescr(&proc_win);
-wnoutrefresh(proc_win.wd);
-wnoutrefresh(d_win);
-doupdate();
+			updatescr(&proc_win);
 			//werase(dialog);
 	//		wmove(dialog, 0, 0);
 	//		waddstr(dialog, get_cwd(pid_from_tree(proc_win.cursor_line)));
 //			touchwin(proc_win.wd);
-//			wrefresh(dialog);
+			wrefresh(dialog);
 			break;
 		case PROC_TREE:
 			tree_periodic();
-if(d_win) get_details(d_win);
-//			updatescr(&proc_win);			
-wnoutrefresh(proc_win.wd);
-wnoutrefresh(d_win);
-doupdate();
+			updatescr(&proc_win);			
 			break;
 		case USERS_LIST:
 			show_cmd_or_idle();
@@ -353,30 +342,12 @@ doupdate();
 int read_key()
 {
 	int c;
-	c = getc(stdin);
+	c = wgetch(info_win.wd);
 	switch (c){
 		case 0xD:
 		case 0xA: return ENTER;
 		case 0xB: return CTRL_K;
 		case 0x9: return CTRL_I;
-		case 0x1B:                                                            
-			getc(stdin);                                                  
-			c = getc(stdin);                                              
-			switch(c) {                                                   
-	                	case 0x41: return UP;                                 
-				case 0x42: return DOWN;                               
-                                case 0x34:                                       
-				case 0x38:                                            
-				case 0x46: return END;                                
-				case 0x36:                                           
-				case 0x47: return PG_DOWN;                          
-				case 0x31:                                          
-				case 0x37:                                            
-	                        case 0x48: return HOME;                             
-				case 0x35:                                            
-				case 0x49: return PG_UP;
-			}        		
-			break;          
 		default:
 			break;
 	}
@@ -447,81 +418,12 @@ void proctree_start(enum State s)
 	updatescr(&proc_win);
 }	
 
-void prg_exit(char *s)
-{
-	curses_end();
-	if(s) printf("%s\n", s);
-	exit(0);
-}
-
-#define DETAILS_WIN_WIDTH	45
-#define DETAILS_WIN_HEIGHT	15
-
-/*
- * Create a new window on the processes tree with
- * detailed information.
- */
-static void create_details()
-{
-	d_win = newwin(DETAILS_WIN_HEIGHT, DETAILS_WIN_WIDTH,
-			screen_rows/2 - DETAILS_WIN_HEIGHT/2,
-			screen_cols/2 - DETAILS_WIN_WIDTH/2);
-	if(!d_win) prg_exit("Cannot create a details window. "
-				"Probably screen is too small.");
-//	box(d_win, ACS_VLINE, ACS_HLINE);	
-	overwrite(proc_win.wd, d_win);
-	wbkgd(d_win, COLOR_PAIR(8));
-}	
-
-static inline void rm_details()
-{
-	delwin(d_win);
-	d_win = 0;
-}
-
-struct proc_detail_t {
-	char *name;		/* name of a particular information	*/
-	char *(* fn)(int pid);	/* function that returns a message	*/
-	int limit;		/* if 0 then message's length is not    */
-				/* limited to window's width		*/
-};
-
-struct proc_detail_t proc_details[] = {
-	{ "CWD: ", read_cwd, 1 },
-	{ "EXE: ", read_exe, 1 },
-	{ "\nSTATUS:\n", read_meminfo, 0 }
-};
-
-void get_details(WINDOW *w)
-{
-	char *msg;
-	int i;
-	struct proc_detail_t *t;
-	unsigned int pid = pid_from_tree(proc_win.cursor_line + proc_win.first_line);
-	int size = sizeof proc_details / sizeof(struct proc_detail_t);
-	werase(w);
-	for(i = 0; i < size; i++) {
-		t = &proc_details[i];
-		wattrset(w, A_BOLD);
-		mvwaddstr(w, i, 0, t->name);
-		wattrset(w, A_NORMAL);
-		msg = t->fn(pid);
-		if(!msg) {
-			waddstr(w, "Information unavailable.");
-			continue;
-		}
-		if(t->limit) waddnstr(w, msg, DETAILS_WIN_WIDTH-strlen(t->name));
-		else waddstr(w, msg);
-	}
-	wnoutrefresh(d_win);
-}		
-
 void proc_key(int); 
 
 void ulist_key(int key)
 {
 	switch(key) {
-	case ENTER:
+	case KEY_ENTER:
 		werase(windows[state]->wd);
 		proctree_start(PROC_TREE);
 		current_keys = proc_key;
@@ -529,6 +431,16 @@ void ulist_key(int key)
 	case 't':
 		proctree_start(INIT_TREE);
 		current_keys = proc_key;
+	/*	
+		dialog = newwin(10, 20, 10, 10);
+		overwrite(proc_win.wd, dialog);
+		wbkgd(dialog, COLOR_PAIR(8));
+		wattrset(dialog, COLOR_PAIR(8));
+		box(dialog, ACS_VLINE, ACS_HLINE);
+		werase(dialog);
+		waddstr(dialog,"dupa wo");
+		touchwin(proc_win.wd);
+		wrefresh(dialog);*/
 		break;
 	case 'i': 
 		toggle = toggle?0:1;
@@ -544,27 +456,25 @@ void ulist_key(int key)
 void proc_key(int key) 
 {
 	int pid;
-	int signal = 0;
+	int signal;
 	switch(key) {
-	case ENTER:
+	case KEY_ENTER:
 		werase(windows[state]->wd);
 		state = USERS_LIST;
-		if(d_win) rm_details();
 		current_keys = ulist_key;
 		print_help(state);
 		clear_tree_title();
 		clear_list();
-		users_list_refresh();		
+		users_list_refresh();
 		break;
 	case CTRL_I:
 		signal = 2;
 	case CTRL_K:
-		if(!signal) signal = 9;
+		signal = 9;
 		pid = pid_from_tree(proc_win.cursor_line 
 				+ proc_win.first_line);
 		send_signal(signal, pid);
 		tree_periodic();
-		break;
 	case 'o':
 		show_owner ^= 1;
 		refresh_tree();
@@ -573,12 +483,8 @@ void proc_key(int key)
 	case 't':
 		proctree_start(INIT_TREE);
 		current_keys = proc_key;
-		break;
-	case 'i':
-		if(!d_win) create_details();
-		else rm_details();
-		break;
 	}
+
 }
 
 /*
@@ -592,23 +498,25 @@ void key_action(int key)
 	}
 	current_keys(key);
 	switch(key) {
-	case PG_DOWN:
+	case KEY_NPAGE:
 		page_down(windows[state], rfrsh[state]);
 		break;
-	case PG_UP:
+	case KEY_PPAGE:
 		page_up(windows[state], rfrsh[state]);
 		break;
-	case HOME:
+	case KEY_HOME:
 		key_home(windows[state], rfrsh[state]);
 		break;
-	case END:
+	case KEY_END:
 		key_end(windows[state], rfrsh[state]);
 		break;
-	case UP:
+	case KEY_UP:
 		cursor_up(windows[state]);
+		wrefresh(windows[state]->wd);
 		break;
-	case DOWN:
+	case KEY_DOWN:
 		cursor_down(windows[state]);
+		wrefresh(windows[state]->wd);
 		break;
 	case 'q': 
 		curses_end(); 
@@ -630,9 +538,6 @@ void key_action(int key)
 		restart();
 		break;
 	}
-	wnoutrefresh(proc_win.wd);
-	if(d_win) get_details(d_win);
-	doupdate();
 }
 
 void get_rows_cols(int *y, int *x)

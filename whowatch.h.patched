@@ -152,12 +152,8 @@ char *count_idle(char *tty);
 #ifndef HAVE_GETLOADAVG
 int getloadavg(double [], int);
 #endif
-char *read_cwd(int);
-char *read_exe(int);
-char *read_meminfo(int);
+char *get_cwd(int);
 
 /* owner.c */
 char *get_owner_name(int u);
 
-/* whowatch.c */
-void get_details(WINDOW *);

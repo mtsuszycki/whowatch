@@ -335,6 +335,56 @@ int getloadavg(double d[], int l)
 }
 #endif
 
+
+static char *read_link(int pid, char *name)
+{
+	static char buf1[128];
+	char buf[32];
+	bzero(buf1, sizeof buf1);
+	snprintf(buf, sizeof buf, "/proc/%d/%s", pid, name);
+	if(readlink(buf, buf1, sizeof buf1) == -1)
+		return 0;
+	return buf1;
+}
+
+/*
+ * Linux specific: for a given pid returns current working directory. 
+ */
+inline char *read_cwd(int pid)
+{
+	return read_link(pid, "cwd");	
+}
+
+/*
+ * Linux specific: for a given pid returns
+ * executable with a full path. 
+ */
+inline char *read_exe(int pid)
+{
+	return read_link(pid, "exe");
+}
+
+char *read_meminfo(int pid)
+{
+	static char buf[256];
+	int size = sizeof buf, ok = 0;
+	char *ptr = buf;
+	FILE *f;
+	memset(buf, 0, size);
+	snprintf(buf, sizeof buf, "/proc/%d/status", pid);
+	f = fopen(buf, "r");
+	if(!f) return 0;
+	while(fgets(ptr, size-(ptr-buf), f)) {
+		if(!ok && !strncmp(ptr, "Uid", 3)) ok = 1;
+		if(!strncmp(ptr, "VmLib", 5)) goto END;
+		if(ok) ptr = buf + strlen(buf);
+		else ptr = buf;
+	}
+END:	
+	fclose(f);
+	return buf;
+}
+
 /* 
  * It really shouldn't be in this file.
  * Count idle time.
@@ -363,3 +413,4 @@ char *count_idle(char *tty)
 	
 	return buf;
 }
+

@@ -56,8 +56,9 @@ void check_line(int line)
 
 void synchronize()
 {
+	char buf[64];
 	int l = 0;
-	struct proc_t *p = tree_start(tree_pid, tree_pid);
+	struct proc_t *p = tree_start(tree_pid, tree_pid, buf);
 	struct process **current = &begin, *z;
 	while(p){
 		if (*current && p->priv){
@@ -121,19 +122,19 @@ char get_state_color(char state)
 
 char *prepare_line(struct process *p)
 {
-	char *tree;
+	char buf[64];
 	if (!p) return 0;
-	tree = tree_string(tree_pid, p->proc);
+	tree_start(tree_pid, p->proc->pid, buf);
 	get_state(p);
 	if(show_owner) 
-		snprintf(line_buf, buf_size,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
+		snprintf(line_buf, buf_size,"\x3%5d %c%c \x3%-8s \x2%s- \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, get_owner_name(p->uid), tree, 
+			p->state, get_owner_name(p->uid), buf, 
 			get_cmdline(p->proc->pid));
 	else 
-		snprintf(line_buf, buf_size,"\x3%5d %c%c \x2%s \x3%s", 
+		snprintf(line_buf, buf_size,"\x3%5d %c%c \x2%s- \x3%s", 
 			p->proc->pid, get_state_color(p->state), 
-			p->state, tree, get_cmdline(p->proc->pid));
+			p->state, buf, get_cmdline(p->proc->pid));
 		
 	return line_buf;
 }

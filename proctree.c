@@ -1,6 +1,8 @@
 /*
- *  Jan Bobrowski <jb@wizard.ae.krakow.pl>
- *  version: 20000511
+ *  Copyright (c) 1999 Jan Bobrowski
+ *  email: jb@wizard.ae.krakow.pl
+ *  licence: GNU LGPL
+ *  version: 19990810
  */
 
 #include <unistd.h>
@@ -79,9 +81,7 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 }
 #endif
 
-#define proc_zero (proc_special[0])
-#define proc_init (proc_special[1])
-static struct proc_t proc_special[2] = {{0},{1}};
+static struct proc_t proc_init = {1,&proc_init};
 static struct proc_t *hash_table[HASHSIZE];
 static struct proc_t *main_list = 0;
 int num_proc = 1;
@@ -94,7 +94,7 @@ static inline int hash_fun(int n)
 struct proc_t* find_by_pid(int n)
 {
 	struct proc_t* p;
-	if(n<=1) return &proc_special[n];
+	if(n<=1) return &proc_init;
 
 	p = hash_table[hash_fun(n)];
 	while(p) {
@@ -132,10 +132,9 @@ static inline struct proc_t* new_proc(int n)
 static struct proc_t *validate_proc(int pid)
 {
 	struct proc_t* p;
+	if(pid<=1) return &proc_init;
 
 	p = find_by_pid(pid);
-	if(pid <= 1)
-		return p;
 	if(p)
 		list_del(p,mlist);
 	else
@@ -152,7 +151,11 @@ static inline void change_parent(struct proc_t* p,struct proc_t* q)
 	p->parent = q;
 }
 
+#ifdef USE_PT_PRIV
 int update_tree(void del(void*))
+#else
+int update_tree()
+#endif
 {
 #ifdef HAVE_PROCESS_SYSCTL
 	struct kinfo_proc *pi;
@@ -182,7 +185,9 @@ int update_tree(void del(void*))
 		q = validate_proc(info.ppid);
 #endif
 		if(p->parent != q){
+#ifdef USE_PT_PRIV
 			if(p->priv) del(p->priv);
+#endif
 
 			change_parent(p,q);
 		}
@@ -200,7 +205,9 @@ int update_tree(void del(void*))
 		if(is_on_list(p,broth))
 			list_del(p,broth);
 		q = p->mlist.nx;
+#ifdef USE_PT_PRIV
 		if(p->priv) del(p->priv);
+#endif
 		remove_proc(p);
 		n++;
 	}
@@ -210,72 +217,53 @@ int update_tree(void del(void*))
 
 /* ---------------------- */
 
-static struct proc_t *proc, *root;
+static struct proc_t *ptr;
+static char *lp;
+static char *buf;
 
-struct proc_t* tree_start(int root_pid, int start_pid)
+struct proc_t* tree_start(int root, int pid, char *b)
 {
-	root = find_by_pid(root_pid);
-	if (!root) return 0;
-	proc = find_by_pid(start_pid);
-	if(start_pid)
-		return proc;
-	return tree_next();	/* skip zero proc - it doesn't really exist */
+	char tmp[128], *s;
+	struct proc_t *p;
+
+	lp = buf = b;
+	ptr = find_by_pid(pid);
+	if (!ptr) return 0;
+	s = tmp;
+	for(p=ptr; p->pid!=root && p->pid!=1; p=p->parent)
+		*s++ = p->broth.nx ? '|' : ' ';
+	if(s > tmp) {
+		do {
+			*lp++ = ' ';
+			*lp++ = *--s;
+		} while(s > tmp);
+		if(lp[-1] == ' ')
+			lp[-1] = '`';
+	}
+
+	*lp = 0;
+	return ptr;
 }
 
 struct proc_t* tree_next()
 {
-	if(proc->child)
-		proc = proc->child;
-	else
-		for(;; proc = proc->parent) {
-			if(proc == root)
-				proc = 0;
-			else if(proc->broth.nx)
-				proc = proc->broth.nx;
-			else
-				continue;
-			break;
+	if(ptr->child) {
+		if(lp>buf && !ptr->broth.nx)
+			lp[-1]=' ';
+		ptr = ptr->child;
+		memcpy(lp," |",3);
+		lp+=2;
+	} else
+		for(;;) {
+			if(lp==buf) return 0;
+			if(ptr->broth.nx) {
+				ptr = ptr->broth.nx;
+				break;
+			}
+			lp -= 2;
+			*lp=0;
+			ptr=ptr->parent;
 		}
-	return proc;
-}
-
-static char buf[TREE_STRING_SZ];
-
-char* tree_string(int root, struct proc_t *p)
-{
-	struct proc_t *q;
-	char *s;
-	int i, d;
-
-	i = 0;
-	for(q=p; q->pid!=root; q=q->parent)
-		i++;
-
-	if(root == 0)
-		i--;	/* forest of all processes case */
-	d = i;
-
-	while(i > TREE_DEPTH)
-		p=p->parent, i--;
-
-	s = buf + 2*i;
-	s[1] = 0;
-	s[0] = '.';
-
-	if(d <= TREE_DEPTH) {
-		s[0] = '-';
-		if(i > 0 && !p->broth.nx) {
-			*--s = '`';
-			goto loop;
-		}
-	}
-
-	while(i > 0) {
-		*--s = p->broth.nx ? '|' : ' ';
-loop:
-		*--s = ' ';
-		p=p->parent, i--;
-	}
-
-	return buf;
+	if(!ptr->broth.nx) lp[-1] = '`';
+	return ptr;
 }

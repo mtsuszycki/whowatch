@@ -1,6 +1,4 @@
-
-#define TREE_DEPTH 3
-#define TREE_STRING_SZ (2 + 2*TREE_DEPTH)
+#define USE_PT_PRIV
 
 struct plist {
 	struct proc_t* nx;
@@ -14,14 +12,18 @@ struct proc_t {
 	struct plist mlist;
 	struct plist broth;
 	struct plist hash;
+#ifdef USE_PT_PRIV
 	void* priv;
+#endif
 };
 
+#ifdef USE_PT_PRIV
 int update_tree(void del(void*));
+#else
 int update_tree();
+#endif
 struct proc_t* find_by_pid(int pid);
-struct proc_t* tree_start(int root, int start);
+struct proc_t* tree_start(int root,int pid,char* buf);
 struct proc_t* tree_next();
-char *tree_string(int root, struct proc_t *proc);
 
 extern int num_proc;

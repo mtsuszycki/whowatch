@@ -31,6 +31,8 @@ extern int fline;	/* shows which line (from struct user) is on the
 extern int lline;
 
 extern int proctree;
+extern int process_nr;	/* how many lines to skip in a processes tree */
+extern int dont_scroll; /* don't do scrolling up processes tree any longer */
 
 extern char clear_buf[32];
 /* number of line which will be assigned to the next user */
@@ -50,7 +52,7 @@ struct user
 							
 extern struct user *begin;
 struct utmp *get_utmp_user(char *tty);
-							
+int read_key();						
 
 /* proc.c */
 int get_ppid(int pid);
@@ -78,3 +80,4 @@ struct user *get_user_by_line(int line);
 
 /* treeps.cc */
 void maintree();
+int update_tree();

@@ -13,6 +13,14 @@ void endprg()
 	printf("\033[?25h");		/* enable cursor */
 }
 
+void help_line()
+{
+        if (color) attrset(COLOR_PAIR(1));
+	move( BOTTOM, 0);
+	addnstr("enter - users/proc, t - command/idle, i -"
+		" init tree, x - restart, q - quit", COLS);
+}
+
 /*
  * print info about cursor position (in the upper right corner)
  */
@@ -36,6 +44,7 @@ void curses_init()
 	start_color();
 	        if (COLS < 80 || LINES < 10){
 	                 fprintf(stderr,"Terminal too small. I expect min. 80 columns and 10 lines.\n");  
+			 sleep(2);
 			 endprg();
 	                 exit(0);
 	          }
@@ -52,6 +61,7 @@ void curses_init()
         nodelay(stdscr,TRUE);
 	scrollok(mainw,TRUE);
         noecho();
+	help_line();
 /*
 	move(TOP-1,0);
 
@@ -90,7 +100,7 @@ void update_info()
 	
 	move(0,0);
         addstr(buf);
-
+	
         attrset(A_BOLD);
         refresh();
 }
@@ -107,10 +117,9 @@ void print_user(struct user *pentry)
 	else 
 		count = get_name(ppid);
 	
-	sprintf(buff,"%-14.14s %-9.9s %-6.6s %-19.19s %-20s",count,pentry->name,
+	snprintf(buff, sizeof buff, "%-14.14s %-9.9s %-6.6s %-19.19s %s",count,pentry->name,
 			pentry->tty, pentry->host,
 			toggle?count_idle(pentry->tty):get_w(pentry->pid));
-	
 	
 	wattrset(mainw,A_BOLD);
 	wmove(mainw,pentry->line - fline,0);	

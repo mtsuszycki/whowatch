@@ -3,6 +3,7 @@ KEYS:
 			 (you can use it even if viewing tree)
 	enter	       - toggle between users list and processes tree
 	t - toggle between users idle time and their commands 
+	i - view all system processes (tree from init)
 	r - redraw
 	x - restart
 	q - quit

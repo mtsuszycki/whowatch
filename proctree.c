@@ -72,6 +72,7 @@ static struct proc proc_init = {1,&proc_init};
 static struct proc *hash_table[HASHSIZE];
 static struct proc *main_list = 0;
 int num_proc = 1;
+int process_nr = 0;
 
 static inline int hash_fun(int n)
 {
@@ -149,7 +150,6 @@ int update_tree()
 	struct proc *p,*q;
 	struct proc *old_list;
 	int n = num_proc;
-
 	change_head(main_list,old_list,mlist);
 	main_list = 0;
 
@@ -220,11 +220,11 @@ struct proc* tree_next()
 void maintree(int pid)
 {
 	char buf[64];
-	int n, y, x;
+	int n, y, x, nr = process_nr;
 	struct proc *p;
 	struct user *u;
 	struct winsize win;
-	update_tree();
+//	update_tree();
 	
 	if (ioctl(1,TIOCGWINSZ,&win) != -1){
 		n = win.ws_row - TOP - 2;
@@ -233,7 +233,11 @@ void maintree(int pid)
 		n = 18;
 	p = tree_start(pid,buf);
 	wmove(mainw,0,0);
-	if ((u = get_user_by_line(cursor_line))){
+	if (pid == 1){
+		wattrset(mainw,A_BOLD);
+		wprintw(mainw,"all processes (%d)\n\n",num_proc);
+		}
+	else if ((u = get_user_by_line(cursor_line))){
 		wattrset(mainw,A_BOLD);
 		wprintw(mainw,"%-14.14s %-9.9s %-6.6s %s\n\n",
 			get_name(get_ppid(u->pid)), u->name,u->tty,
@@ -241,24 +245,33 @@ void maintree(int pid)
 	}
 	while(p) {
 		char state = get_state(p->pid);
+
+		if (nr++ < 0){		/* skip lines - simulate scrolling */
+			p = tree_next();
+			continue;
+		}
 		wattrset(mainw,A_NORMAL);
 		wprintw(mainw,"%5d",p->pid);
-		if (state == 'R'){ 
+		if (state == 'R')
 			chkcolor(COLOR_PAIR(2));
-			wprintw(mainw," %c ",get_state(p->pid));
-		}
-		else  wprintw(mainw,"   ");
+		if (state == 'S')
+			state = ' ';
+		wprintw(mainw," %c ",state);
 		
 		chkcolor(COLOR_PAIR(3));
 		wprintw(mainw,"%s- ",buf);
 		chkcolor(A_NORMAL);
-		
-		wprintw(mainw,"%s\n",get_cmdline(p->pid));
 		getyx(mainw, y, x);
-		if (y >= n) break;
-		p=tree_next();
+		waddnstr(mainw, get_cmdline(p->pid), COLS - x);
+		wprintw(mainw,"\n");
+		getyx(mainw, y, x);
+		if (y >= n) break;	/* end of the screen */
+		if (!(p = tree_next()) && nr < n - 5)
+				dont_scroll = 1;		
+		else 
+			dont_scroll = 0;
+
 	}
 	wrefresh(mainw);	
-	usleep(200000);
 }
 

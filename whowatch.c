@@ -39,9 +39,9 @@ struct user *begin ;
 int fline, lline, lines;
 
 int fdwtmp;		/* wtmp file descriptor */
-int proctree = 0; 	/* if 0 we show process tree else users list */
-
-int cursor_line = 0;
+int proctree;	 	/* if 0 we show process tree else users list */
+int dont_scroll;	/* do not scroll up processes tree */
+int cursor_line;
 
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC };
 
@@ -54,7 +54,7 @@ char * const telnet = 	"(in.telnetd)";
 int ssh_port = 22;
 int telnet_port = 23;
 int local_port = -1;
-
+int tree_pid = 1;
 
 void allocate_error(){
 	fprintf(stderr,"Cannot allocate memory.\n");
@@ -197,25 +197,6 @@ struct user* new_user(struct utmp *newone)
 	return tmp;
 }
 
-// for debugging only
-void show_u()
-{
- 	struct user *f = begin ;
-        fprintf(debug_file,"SIGSEGV caught\n");
-        fprintf(debug_file,"begin = %p\n",begin);
-        while (f){
-        	fprintf(debug_file,"adress %p\tprev %-11p\tnext %-10p\t(%s,%s) %d\n",
-                        f,*f->prev,f->next,f->name,f->tty,f->line);
-                f = f->next;
-        }
-       	fflush(debug_file);
-        endwin();
-        fprintf(stderr,"SIGSEGV caught\n");
-        kill(getpid(),6);
-        exit (0);
-}
-                                                                                                                                 
-
 void cleanup()
 {
 	struct user *i = begin, *tmp;
@@ -230,10 +211,10 @@ void cleanup()
 	close(fdwtmp);
 }
 
-
 void restart()
 {
 	cursor_line = how_many = ssh_users = telnet_users = local_users = 0;
+	dont_scroll = 0;
 	endwin();
 	curses_init();
 	read_utmp();
@@ -247,31 +228,20 @@ void restart()
 
 int read_key()
 {
-	struct timeval tv;
-	fd_set rfds;
-	int retval;
-	int c = 0;
-
-	FD_ZERO(&rfds);
-	FD_SET(0,&rfds);
-	tv.tv_sec = TIMEOUT;
-	tv.tv_usec = 0;
-	retval = select(1,&rfds,0,0,&tv);
-		if (retval){
+	int c;
+	c = getc(stdin);
+	switch (c){
+		case 0xD:
+		case 0xA: return ENTER;
+		case 0x1B:
+			getc(stdin);
 			c = getc(stdin);
-			switch (c){
-				case 0xD:
-				case 0xA: return ENTER;
-				case 0x1B:
-					getc(stdin);
-					c = getc(stdin);
-					if (c == 0x41) return UP;
-					else if (c == 0x42) return DOWN;
-					break;
-				default:
-					break;
-			}
-		}
+			if (c == 0x41) return UP;
+			else if (c == 0x42) return DOWN;
+			break;
+		default:
+			break;
+	}
 	return c;
 }
 
@@ -284,23 +254,40 @@ void key_action(int key)
 			werase(mainw);
 			wrefresh(mainw);
 			if (proctree){
-				int pid = pid_from_cursor();
-				maintree(pid);
+				tree_pid = pid_from_cursor();
+				process_nr = 0;
+				dont_scroll = 0;
+				maintree(tree_pid);
 			}
 			else redraw();
 			break;	
 		case UP:
-			cursor_up();
-			break;	
+			if (proctree && process_nr){
+				process_nr++;
+				werase(mainw);
+				maintree(tree_pid);
+			}
+			else if (!proctree)
+				cursor_up();
+			break;
 		case DOWN:
-			cursor_down();
+			if (proctree && !dont_scroll){
+				process_nr--;
+				werase(mainw);
+				maintree(tree_pid);
+			}
+			else if (!proctree)			
+				cursor_down();
 			break;
 #ifdef NOAUTO
 		case 't': toggle = toggle?0:1;
 		case 'w': show_cmd_or_idle(toggle); 
 	  		break;
 #else
-		case 't': toggle = toggle?0:1; break;
+		case 't': 
+			toggle = toggle?0:1;
+			show_cmd_or_idle(toggle);
+			break;
 #endif
 		case 'x':
 			cleanup();
@@ -311,6 +298,17 @@ void key_action(int key)
 		  	break;
 		case 'q': 
 			endprg(); exit(0);
+		case 'i':
+			if (!proctree) proctree = 1;
+			werase(mainw);
+			wrefresh(mainw);
+			if (proctree){
+				tree_pid = 1;
+				process_nr = 0;
+				maintree(tree_pid);
+			}
+			else redraw();
+			break;	
 		default:
 			break;
 	}
@@ -322,11 +320,52 @@ void bye()
 	exit(0);
 }
 
-void main()
+void check_wtmp()
 {
+	
 	struct user *f, *tmp;
 	struct utmp entry;
+	while (read(fdwtmp, &entry,sizeof entry)){ 
 
+		/* type 7 is USER_PROCESS (user just log in)*/
+		if (entry.ut_type == 7){
+			tmp = new_user(&entry);
+			if (in_scr(tmp->line)){
+				lline++;
+				if (!proctree) print_user(tmp);
+			}
+			update_info();
+			continue;
+		}
+		if (entry.ut_type != 8) continue;
+		
+		/* type 8 is DEAD_PROCESS (user just logged out) */
+		f = begin;
+		while(f){
+			if (strncmp(f->tty,entry.ut_line,UT_LINESIZE)) {
+				f = f->next;
+				continue;
+			}
+			delete_user(f);
+			update_info();
+
+			tmp = f->next;
+			*(f->prev) = tmp;
+			if (tmp) tmp->prev = f->prev;
+
+			free(f->name);
+			free(f->tty);
+			free(f);
+		}
+	}
+}
+
+void main()
+{
+	struct timeval tv;
+	fd_set rfds;
+	int retval;
+	
 	curses_init();
 	bzero(clear_buf, sizeof clear_buf);
 	memset(clear_buf, ' ', sizeof clear_buf - 1);
@@ -338,12 +377,9 @@ void main()
 #endif	
 	read_utmp();
 	update_info();
+	update_tree();
 	signal(SIGINT, bye);
-#ifdef DEBUG
-	signal(SIGINT, show_u);
-	signal(SIGSEGV, show_u);
-	fprintf(debug_file,"Started. begin = %p\n",begin);
-#endif
+
 	if ((fdwtmp = open(WTMP,O_RDONLY)) == -1){
 		fprintf(stderr,"Cannot open " WTMP "\n");
 		exit (-1);
@@ -354,65 +390,27 @@ void main()
 		endwin();
 		exit (0);
 	}
+	tv.tv_sec = TIMEOUT;
+	tv.tv_usec = 0;
 	for(;;){
-		while(!read(fdwtmp, &entry,sizeof entry)) {
+		FD_ZERO(&rfds);
+		FD_SET(0,&rfds);
+		retval = select(1,&rfds,0,0,&tv);
+		if (retval){
 			int key = read_key();
 			key_action(key);
-#ifndef NOAUTO
-			if (!proctree)
-				show_cmd_or_idle(toggle);
-			
-			else{
-				int pid = pid_from_cursor();
+		}
+		if (!tv.tv_sec && !tv.tv_usec){
+			check_wtmp();
+			if (proctree){
+				update_tree();
 				werase(mainw);
-				maintree(pid);
+				maintree(tree_pid);
 				wrefresh(mainw);
 			}
-#endif
+			else show_cmd_or_idle(toggle);
+			tv.tv_sec = TIMEOUT;
 		}
-		/* type 7 is USER_PROCESS (user just log in)*/
-		if (entry.ut_type == 7){
-			tmp = new_user(&entry);
-			if (in_scr(tmp->line)){
-				lline++;
-				if (!proctree) print_user(tmp);
-			}
-			update_info();
-#ifdef DEBUG
-			fprintf(debug_file,"IN: %-9s%-5s, %-8s %-5s (%-12p<- %-12p) %d\n",
-				entry.ut_user,entry.ut_line,tmp->name,tmp->tty,*tmp->prev,tmp,tmp->line);
-			fflush(debug_file);
-#endif
-			continue;
-		}
-
-		if (entry.ut_type != 8) continue;
-		
-	/* type 8 is DEAD_PROCESS (user just logged out) */
-		f = begin;
-		while(f){
-			if (strncmp(f->tty,entry.ut_line,UT_LINESIZE)) {
-				f = f->next;
-				continue;
-			}
-#ifdef DEBUG
-			fprintf(debug_file,"OUT %-9s%-5s, %-9s %-5s (%-12p<- %-12p)%d\n",
-				entry.ut_user,entry.ut_line,f->name,f->tty,*f->prev,f,f->line);
-			fflush(debug_file);
-#endif			
-			delete_user(f);
-			update_info();
-
-			tmp = f->next;
-			*(f->prev) = tmp;
-			if (tmp) tmp->prev = f->prev;
-
-			free(f->name);
-			free(f->tty);
-			free(f);
-			break;
-		}
-
 	}
 }
 

@@ -56,11 +56,18 @@ char *get_cmdline(int pid)
                	return "-";
 	while (fread(buff+i,1,1,f) == 1){
 		if (buff[i] == '\0') buff[i] = ' ';
-		if (i == 512 - 2) break;
+		if (i == sizeof buff - 1) break;
 		i++;
 	}
-        buff[i] = '\0';
 	fclose(f);
+	buff[i] = '\0';
+	if (!i){	/* 'cmdline' is empty - try 'stat' instead */
+		sprintf(buff,"/proc/%d/stat",pid);
+			if (!(f = fopen(buff,"rt")))
+               			return "-";
+		fscanf(f,"%*d %s",buff);	
+        	fclose(f);
+	}
 	return buff;
 }
 

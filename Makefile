@@ -1,5 +1,5 @@
 
-CFLAGS=-O2 -fomit-frame-pointer -malign-loops=2 -Wall
+CFLAGS=-O2 -fomit-frame-pointer -malign-loops=2 -Wall 
 OBJ=whowatch.o screen.o proctree.o proc.o
 
 

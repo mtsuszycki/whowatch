@@ -76,6 +76,7 @@ dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS(select)
+AC_CHECK_FUNCS(getloadavg)
 
 AC_MSG_CHECKING([whether select() modifies the time value])
 AC_TRY_RUN([#include <sys/types.h>

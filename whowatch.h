@@ -56,7 +56,7 @@ struct window
 	int d_lines;		/* current total number of data lines 	*/
 	int cursor_line;	/* where is cursor		 	*/
 	int has_cursor;		/* not yet implemented    		*/
-	WINDOW *descriptor;
+	WINDOW *wd;		/* window descriptor			*/
 	char *(*giveme_line) (int line);
 };
 
@@ -131,11 +131,11 @@ void page_down(struct window *, void (*)());
 void page_up(struct window *, void (*)());
 void key_home(struct window *, void (*)());
 void key_end(struct window *, void (*)());
+void update_load(void);
+void updatescr();
 
 /* proctree.c */
 int update_tree();
-
-
 void get_rows_cols(int *, int *);
 
 /* procinfo.c */
@@ -149,6 +149,9 @@ char *get_w(int pid);
 void delete_tree_line(void *line);
 void get_state(struct process *p);
 char *count_idle(char *tty);
+#ifndef HAVE_GETLOADAVG
+int getloadavg(double [], int);
+#endif
 
 /* owner.c */
 char *get_owner_name(int u);

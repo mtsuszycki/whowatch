@@ -1,8 +1,6 @@
-
-                             Whowatch changelog
    May 2000
-   - added 'c' key in processes tree, added code for proper handling ftp
-     logins, bug fixes
+   - added 'c' key in processes tree, load averages info, code for proper 
+     handling ftp logins, bug fixes
 
    April 2000
    - ported to FreeBSD and OpenBSD, added PageUp,PageDown,Home,End keys,

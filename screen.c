@@ -25,19 +25,19 @@ void curses_init()
 	proc_win.rows = users_list.rows;
 	info_win.cols = help_win.cols = proc_win.cols = users_list.cols;
 	
-	users_list.descriptor = newwin(users_list.rows , COLS, 2 ,0);
-	proc_win.descriptor = users_list.descriptor;
+	users_list.wd = newwin(users_list.rows , COLS, 2 ,0);
+	proc_win.wd = users_list.wd;
 
-	help_win.descriptor = newwin(1, COLS, users_list.rows + 2, 0);
-	info_win.descriptor = newwin(2, COLS, 0, 0);
-	if (!info_win.descriptor || !help_win.descriptor || 
-		!users_list.descriptor || !proc_win.descriptor){
+	help_win.wd = newwin(1, COLS, users_list.rows + 2, 0);
+	info_win.wd = newwin(2, COLS, 0, 0);
+	if (!info_win.wd || !help_win.wd || 
+		!users_list.wd || !proc_win.wd){
 		endwin();
 		fprintf(stderr, "Ncurses library cannot create window\n");
 		exit(0);
 	}
 
-	wattrset(users_list.descriptor, A_BOLD);
+	wattrset(users_list.wd, A_BOLD);
         printf("\033[?25l");                    /* disable cursor */
 
         start_color();
@@ -48,24 +48,24 @@ void curses_init()
 	init_pair(5,COLOR_RED,COLOR_BLACK);
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_BLUE,COLOR_BLACK);
- 	wattrset(proc_win.descriptor, COLOR_PAIR(3));       
-	wattrset(users_list.descriptor, COLOR_PAIR(3));       
-	wattrset(help_win.descriptor, COLOR_PAIR(3));       
-	wattrset(info_win.descriptor, COLOR_PAIR(3));
-	wbkgd(users_list.descriptor, COLOR_PAIR(3)); 
-	wbkgd(help_win.descriptor, COLOR_PAIR(3)); 
-	wbkgd(info_win.descriptor, COLOR_PAIR(3)); 
+ 	wattrset(proc_win.wd, COLOR_PAIR(3));       
+	wattrset(users_list.wd, COLOR_PAIR(3));       
+	wattrset(help_win.wd, COLOR_PAIR(3));       
+	wattrset(info_win.wd, COLOR_PAIR(3));
+	wbkgd(users_list.wd, COLOR_PAIR(3)); 
+	wbkgd(help_win.wd, COLOR_PAIR(3)); 
+	wbkgd(info_win.wd, COLOR_PAIR(3)); 
 	
 	cbreak();
         nodelay(stdscr,TRUE);
-        scrollok(users_list.descriptor,TRUE);
+        scrollok(users_list.wd,TRUE);
         noecho();
 }				
 
 void curses_end()
 {
-	werase(help_win.descriptor);
-	wrefresh(help_win.descriptor);
+	werase(help_win.wd);
+	wrefresh(help_win.wd);
 	endwin();
         printf("\033[?25h");            /* enable cursor */
 }
@@ -74,32 +74,32 @@ void cursor_on(struct window *w, int line)
 {
 	chtype c;
 	int i;
-	wattrset(w->descriptor, A_REVERSE);
+	wattrset(w->wd, A_REVERSE);
 	for(i = 0; i <= w->cols; i++) { 
-		c = mvwinch(w->descriptor, line, i);
+		c = mvwinch(w->wd, line, i);
 		curs_buf[i] = c;
-		waddch(w->descriptor, c & A_CHARTEXT);
+		waddch(w->wd, c & A_CHARTEXT);
 	}
 	curs_buf[i] = 0;
-	wattrset(w->descriptor, A_BOLD);
+	wattrset(w->wd, A_BOLD);
 }
 
 void cursor_off(struct window *w, int line)
 {
 	int i;
-	wattrset(w->descriptor, A_NORMAL);
-	wmove(w->descriptor, line, 0);
+	wattrset(w->wd, A_NORMAL);
+	wmove(w->wd, line, 0);
 	for(i = 0; curs_buf[i]; i++) 
-		waddch(w->descriptor, curs_buf[i]);
+		waddch(w->wd, curs_buf[i]);
 
-	wattrset(w->descriptor, A_BOLD);
+	wattrset(w->wd, A_BOLD);
 }
 
 void move_cursor(struct window *w, int from, int to)
 {
 	cursor_off(w, from);
 	cursor_on(w, to);
-	wrefresh(w->descriptor);
+	wrefresh(w->wd);
 }
 
 /*
@@ -110,40 +110,51 @@ int echo_line(struct window *w, char *s, int line)
 	char *p = s, *q = s;
 	int i = 0;
 	if (!p) return 1;
-	wmove(w->descriptor, line, 0);
-//waddstr(w->descriptor, s);
-//return;
-	wclrtoeol(w->descriptor);
+	wmove(w->wd, line, 0);
+	wclrtoeol(w->wd);
 	while(*p){
 		if (i > w->cols) break;
 		if (*p < 17){
 			i--;
-			waddnstr(w->descriptor, q, p - q);
-			wattrset(w->descriptor, COLOR_PAIR(*p));
+			waddnstr(w->wd, q, p - q);
+			wattrset(w->wd, COLOR_PAIR(*p));
 			q = p + 1;
 		}
 		p++;
 		i++;
 	}
-	waddnstr(w->descriptor, q, p - q);
+	waddnstr(w->wd, q, p - q);
 	return 0;
 }	
 
 void print_help(int state)
 {
 	echo_line(&help_win, help_line[state], 0);
-	wrefresh(help_win.descriptor);
+	wrefresh(help_win.wd);
 }
+
 
 void print_info()
 {
         char buf[128];
-        sprintf(buf,"\x1%d users: (%d local , %d telnet , %d ssh , %d other)  ",
+        snprintf(buf, sizeof buf - 1, 
+        	"\x1%d users: (%d local, %d telnet, %d ssh, %d other)",
                 how_many, local_users, telnet_users, ssh_users,
         how_many - telnet_users - ssh_users - local_users);
 	echo_line(&info_win, buf, 0);
-	wrefresh(info_win.descriptor);					
+	wrefresh(info_win.wd);					
 }										
+
+void update_load()
+{
+	double d[3] = { 0, 0, 0};
+	char buf[32];
+	if(info_win.cols < 65 || getloadavg(d, 3) == -1) return;
+	snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
+	wmove(info_win.wd, 0, info_win.cols - 20);
+	wattrset(info_win.wd, COLOR_PAIR(3));
+	waddstr(info_win.wd, buf);
+}
 											
 /*
  * If virtual is not 0 then update window parameters but don't display
@@ -173,8 +184,8 @@ void delete_line(struct window *w, int line)
 		w->first_line--;
 		return;
 	}
-	wmove(w->descriptor, real_line_nr(line, w), 0);
-	wdeleteln(w->descriptor);
+	wmove(w->wd, real_line_nr(line, w), 0);
+	wdeleteln(w->wd);
 	
 	/* if there is a line below visible screen display it */
 	if (w->last_line){
@@ -185,7 +196,7 @@ void delete_line(struct window *w, int line)
 			
 	if (real_line_nr(line, w) < w->cursor_line){
 		w->cursor_line--;
-		wrefresh(w->descriptor);
+		wrefresh(w->wd);
 		return;
 	}
 	if (real_line_nr(line, w) == w->cursor_line){
@@ -203,7 +214,7 @@ void delete_line(struct window *w, int line)
 			cursor_on(w, w->cursor_line);
 		}
 	}
-	wrefresh(w->descriptor);
+	wrefresh(w->wd);
 }
 
 /*
@@ -249,11 +260,10 @@ void cursor_down(struct window *w)
 	}
 /* cursor is at the bottom, check for lines, scroll screen, and print */
 	else if ((buf = w->giveme_line(w->first_line + w->rows))){
-		wscrl(w->descriptor, 1);
+		wscrl(w->wd, 1);
 		echo_line(w, buf, w->cursor_line);
 		w->first_line++; 
 		move_cursor(w,w->cursor_line-1, w->cursor_line);
-//		wrefresh(w->descriptor);
 	}
 }
 void cursor_up(struct window *w)
@@ -267,11 +277,10 @@ void cursor_up(struct window *w)
 	else if (!w->cursor_line && w->first_line){
 		buf = w->giveme_line(w->first_line - 1);
 		if (!buf) return;
-		wscrl(w->descriptor, -1);
+		wscrl(w->wd, -1);
 		w->first_line--;
 		echo_line(w, buf, w->cursor_line);
 		move_cursor(w, w->cursor_line+1, w->cursor_line);
-//		wrefresh(w->descriptor);
 		if (w->last_line < w->rows - 1) w->last_line++;
 	}
 	return;
@@ -294,7 +303,7 @@ void page_down(struct window *w, void (*refresh)())
 	else z = i;
 	w->first_line += z;
 	(*refresh)();
-	wrefresh(w->descriptor);
+	wrefresh(w->wd);
 }
 
 void page_up(struct window *w, void (*refresh)())
@@ -313,7 +322,7 @@ void page_up(struct window *w, void (*refresh)())
 	else z = i;
 	w->first_line -= z;
 	(*refresh)();
-	wrefresh(w->descriptor);
+	wrefresh(w->wd);
 }
 
 void key_home(struct window *w, void (*refresh)())
@@ -352,4 +361,13 @@ void key_end(struct window *w, void (*refresh)())
 		move_cursor(w, w->cursor_line, w->last_line);
 		w->cursor_line = w->last_line;
 	}
+}
+
+void updatescr(struct window *w)
+{
+	wmove(w->wd, w->cursor_line, w->cols + 1);
+	/* always update info window */
+	wnoutrefresh(info_win.wd);
+	wnoutrefresh(w->wd);
+	doupdate();
 }

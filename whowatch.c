@@ -43,7 +43,7 @@ int signal_sent;
 
 int how_many, telnet_users, ssh_users, local_users;
 
-int wtmp_fd;		/* wtmp file descriptor 			*/
+int wtmp_fd;		/* wtmp file wd 			*/
 int screen_rows;	/* screen rows returned by ioctl		*/
 int screen_cols;	/* screen cols returned by ioctl		*/
 
@@ -145,7 +145,7 @@ struct user_t *allocate_user(struct utmp *entry)
 	
 void print_user(struct user_t *u)
 {
-	wattrset(users_list.descriptor, A_BOLD);
+	wattrset(users_list.wd, A_BOLD);
 	snprintf(line_buf, buf_size, 
 		"%-14.14s %-9.9s %-6.6s %-19.19s %s", 
 		u->parent, 
@@ -155,7 +155,7 @@ void print_user(struct user_t *u)
 		toggle?count_idle(u->tty):get_w(u->pid));
 	line_buf[buf_size - 1] = '\0';
 	print_line(&users_list, line_buf ,u->line, state);
-	wrefresh(users_list.descriptor);
+	wrefresh(users_list.wd);
 }
 
 void cleanup()
@@ -182,8 +182,8 @@ void users_list_refresh()
 	struct user_t *u;
 	for_each(u, users) print_user(u);
 	/* hide cursor */
-	wmove(users_list.descriptor, users_list.cursor_line, users_list.cols+1);
-	wrefresh(users_list.descriptor);
+	wmove(users_list.wd, users_list.cursor_line, users_list.cols+1);
+	wrefresh(users_list.wd);
 }
 	
 /*
@@ -215,7 +215,7 @@ void read_utmp()
 		addto_list(u, users);
 	}
 	close(fd);
-	wrefresh(users_list.descriptor);
+	wnoutrefresh(users_list.wd);
 	return;
 }
 
@@ -263,7 +263,7 @@ void check_wtmp()
 #endif
 			u = new_user(&entry);
 			print_user(u);
-			wrefresh(users_list.descriptor);
+			wrefresh(users_list.wd);
 			print_info();
 			continue;
 		}
@@ -308,20 +308,25 @@ char *users_list_giveline(int line)
 	return 0;
 }
 
+void update_load();
 void periodic()
 {
 	/* always check wtmp for logins and logouts */
-	check_wtmp();		
+	check_wtmp();
+	update_load();		
 	switch(state){
 		case INIT_TREE:
 			tree_periodic();
 			tree_title(0);
+			updatescr(&proc_win);
 			break;
 		case PROC_TREE:
 			tree_periodic();
+			updatescr(&proc_win);
 			break;
 		case USERS_LIST:
 			show_cmd_or_idle();
+			updatescr(&users_list);
 			break;
 	}
 }
@@ -375,9 +380,9 @@ void send_signal(int sig, pid_t pid)
 		sprintf(buf,"Can't send signal %d to process %d",
 			sig, pid); 
 	else sprintf(buf,"Signal %d was sent to process %d",sig, pid);
-	werase(help_win.descriptor);
+	werase(help_win.wd);
 	echo_line(&help_win, buf, 0);
-	wrefresh(help_win.descriptor);
+	wrefresh(help_win.wd);
 }
 
 void main_init()
@@ -397,8 +402,8 @@ void restart()
 	windows_init();
 	clear_tree_title();
 	state = USERS_LIST;
-	werase(users_list.descriptor);
-	wrefresh(users_list.descriptor);
+	werase(users_list.wd);
+	wrefresh(users_list.wd);
 	read_utmp();
 	main_init();
 	
@@ -416,7 +421,7 @@ void key_action(int key)
 	}
 	switch(key){
 	case ENTER:
-		werase(windows[state]->descriptor);
+		werase(windows[state]->wd);
 		switch(state){
 		case USERS_LIST:
 			state = PROC_TREE;
@@ -428,8 +433,9 @@ void key_action(int key)
 				);
 			if (!p) tree_pid = 1;
 			else tree_pid = p->pid; 
-			tree_title(p);
 			tree_periodic();
+			tree_title(p);
+			updatescr(&proc_win);
 			break;
 		case INIT_TREE:
 		case PROC_TREE:
@@ -447,6 +453,7 @@ void key_action(int key)
 				+ proc_win.first_line);
 		send_signal(2, pid);
 		tree_periodic();
+		
 		break;
 	case CTRL_K:
 		if (state < PROC_TREE) break;
@@ -469,11 +476,11 @@ void key_action(int key)
 		break;
 	case UP:
 		cursor_up(windows[state]);
-		wrefresh(windows[state]->descriptor);
+		wrefresh(windows[state]->wd);
 		break;
 	case DOWN:
 		cursor_down(windows[state]);
-		wrefresh(windows[state]->descriptor);
+		wrefresh(windows[state]->wd);
 		break;
 	case 'q': 
 		curses_end(); 
@@ -482,7 +489,7 @@ void key_action(int key)
 		exit(0);
 	case 't':
 		if (state < INIT_TREE){
-			werase(windows[state]->descriptor);
+			werase(windows[state]->wd);
 			proc_tree_init();
 			clear_list();
 			state = INIT_TREE;
@@ -490,26 +497,29 @@ void key_action(int key)
 			tree_pid = 1; /* all processes */
 			tree_periodic();
 			tree_title(0);
+			updatescr(&proc_win);
 		}
 		break;
 	case 'i': 
 		if (state != USERS_LIST) break;
 		toggle = toggle?0:1;
 		show_cmd_or_idle();
+		updatescr(&users_list);
 		break;
 	case 'o':
 		if (state == USERS_LIST) break;
 		show_owner ^= 1;
 		refresh_tree();
-		wrefresh(proc_win.descriptor);
+		wrefresh(proc_win.wd);
 /* ugly hack to force proper cursor display on older curses versions */
 //cursor_off(&proc_win, proc_win.cursor_line);
 //cursor_on(&proc_win, proc_win.cursor_line);
 		break;
 	case 'c':
 		full_cmd ^= 1;
-		(*rfrsh[state])(); //refresh_tree();
-		wrefresh(windows[state]->descriptor);
+		(*rfrsh[state])(); 
+		updatescr(&proc_win);
+//		wrefresh(windows[state]->wd);
 		break;
 #ifdef DEBUG
 	case 'd':
@@ -623,11 +633,13 @@ int main()
 /*	signal(SIGWINCH, winch_handler);   not yet implemented */
 //	signal(SIGSEGV, segv_handler);
 
-	wrefresh(users_list.descriptor);
+	wrefresh(users_list.wd);
 	read_utmp();
 	print_help(state);
 	print_info();
-
+	update_load();
+	updatescr(&users_list);
+	
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
 	for(;;) {				/* main loop */
@@ -669,17 +681,16 @@ void show_cmd_or_idle()
 		if (u->line < q->first_line || 
 			u->line > q->first_line + q->rows - 1) 
 			continue;
-	        wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
+	        wmove(q->wd, u->line - q->first_line, CMD_COLUMN);
 		cursor_off(q, q->cursor_line);
-	        wattrset(q->descriptor, A_BOLD);
-		wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
-	        waddnstr(q->descriptor, toggle?count_idle(u->tty):get_w(u->pid),
+	        wattrset(q->wd, A_BOLD);
+		wmove(q->wd, u->line - q->first_line, CMD_COLUMN);
+	        waddnstr(q->wd, toggle?count_idle(u->tty):get_w(u->pid),
 	        	 COLS - CMD_COLUMN - 1);
-	        getyx(q->descriptor, y, x);
+	        getyx(q->wd, y, x);
 		while(x++ < q->cols + 1)
-			waddch(q->descriptor, ' ');
+			waddch(q->wd, ' ');
 		cursor_on(q, q->cursor_line);
-		wmove(q->descriptor, q->cursor_line, q->cols + 1);
+		wmove(q->wd, q->cursor_line, q->cols + 1);
 	}
-	wrefresh(q->descriptor);
 }

@@ -1,4 +1,4 @@
-- Proper handling of 'screen' program  sessions
+- Proper handling of 'screen' sessions
 - Add functions that handle screen resizing
 - Add async events (dialog boxes etc)
 - Fix cursor movement functions

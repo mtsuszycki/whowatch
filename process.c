@@ -181,17 +181,13 @@ void tree_title(struct user_t *u)
                 	"%-14.14s %-9.9s %-6.6s %s",
                 	u->parent, u->name, u->tty, u->host);
         buf[sizeof buf - 1] = '\0';
-	wattrset(info_win.descriptor, A_BOLD);
+	wattrset(info_win.wd, A_BOLD);
         echo_line(&info_win, buf, 1);
-        /* hide real cursor */
-        wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
-        wrefresh(info_win.descriptor);
-        wrefresh(proc_win.descriptor);
 }
 
 void clear_tree_title()
 {
-	WINDOW *w = info_win.descriptor;
+	WINDOW *w = info_win.wd;
 	wmove(w, 1, 0);
 	wclrtoeol(w);
 	wrefresh(w);
@@ -203,14 +199,13 @@ void tree_periodic()
 	delete_tree_lines();
 	synchronize();
 	maintree(tree_pid);
-	wrefresh(proc_win.descriptor);
 }
 
 void maintree(int pid)
 {
 	struct process *p;
 	if(!begin) {
-		WINDOW *w = proc_win.descriptor;
+		WINDOW *w = proc_win.wd;
 		wmove(w, 0, 0);
 		wclrtoeol(w);
 		wattrset(w, A_NORMAL);
@@ -228,11 +223,10 @@ void maintree(int pid)
 			break;
 		print_line(&proc_win,prepare_line(p), p->line, 0);
 	}
-        /* hide real cursor */
-        wmove(proc_win.descriptor, proc_win.cursor_line, proc_win.cols + 1);
 }
 
 void refresh_tree()
 {
 	maintree(tree_pid);
+	updatescr(&proc_win);
 }

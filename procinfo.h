@@ -12,9 +12,3 @@
 #ifdef HAVE_LIBKVM
 #include <kvm.h>
 #endif
-
-#ifdef HAVE_LIBKVM
-kvm_t *kd;
-extern int can_use_kvm;
-#endif
-

@@ -10,10 +10,14 @@
 #include "config.h"
 #include "procinfo.h"
 
+#ifdef HAVE_LIBKVM
+kvm_t *kd;
+extern int can_use_kvm;
+#endif
+
 extern int full_cmd;
 
 #define EXEC_FILE	128
-
 #define elemof(x)	(sizeof (x) / sizeof*(x))
 #define endof(x)	((x) + elemof(x))
 
@@ -107,7 +111,8 @@ int get_term(char *tty)
 {
 	struct stat s;
 	char buf[32];
-	sprintf(buf, "/dev/%s", tty);
+	memset(buf, 0, sizeof buf);
+	snprintf(buf, sizeof buf - 1,  "/dev/%s", tty);
 	if(stat(buf, &s) == -1) return -1;
 	return s.st_rdev;
 }
@@ -159,7 +164,7 @@ int get_login_pid(char *tty)
 }
 
 /*
- * Scan all processes 
+ * Get information about all system processes
  */
 int get_all_info(struct kinfo_proc **info)
 {
@@ -190,6 +195,7 @@ char *get_cmdline(int pid)
         FILE *f;
         int i = 0;
         if(!full_cmd) goto no_full;
+        memset(buf, 0, sizeof buf);
         sprintf(buf, "/proc/%d/cmdline",pid);
         if (!(f = fopen(buf, "rt")))
                 return "-";
@@ -296,11 +302,11 @@ void get_state(struct process *p)
 #else
 void get_state(struct process *p)
 {
-	static char buf[256];
+	char buf[256];
 	struct stat s;
 	char state;
         FILE *f;
-        sprintf(buf,"/proc/%d", p->proc->pid);
+        snprintf(buf, sizeof buf - 6, "/proc/%d", p->proc->pid);
 	p->uid = -1;
 	if (stat(buf, &s) >= 0) p->uid = s.st_uid;  
 	strcat(buf,"/stat");
@@ -311,6 +317,21 @@ void get_state(struct process *p)
         fscanf(f,"%*d %*s %c",&state);
 	fclose(f);
 	p->state = state=='S'?' ':state;
+}
+#endif
+
+#ifndef HAVE_GETLOADAVG
+int getloadavg(double d[], int l)
+{
+	FILE *f;
+	if(!(f = fopen("/proc/loadavg", "r")))
+		return -1;
+	if(fscanf(f, "%lf %lf %lf", &d[0], &d[1], &d[2]) != 3) {
+		fclose(f);
+		return -1;
+	}
+	fclose(f);
+	return 0;
 }
 #endif
 
@@ -330,13 +351,13 @@ char *count_idle(char *tty)
 	idle_time = time(0) - st.st_atime;	
 	
 	if (idle_time >= 3600 * 24) 
-		sprintf(buf,"%ldd",idle_time/(3600 * 24) );
+		sprintf(buf,"%ldd", (long) idle_time/(3600 * 24) );
 	else if (idle_time >= 3600){
 		time_t min = (idle_time % 3600) / 60;
-		sprintf(buf,"%ld:%02ld", idle_time/3600, min);
+		sprintf(buf,"%ld:%02ld", (long)idle_time/3600, (long) min);
 	}
 	else if (idle_time >= 60)
-		sprintf(buf,"%ld",idle_time/60);
+		sprintf(buf,"%ld", (long) idle_time/60);
 	else
 		sprintf(buf," ");
 	

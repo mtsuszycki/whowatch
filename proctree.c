@@ -1,8 +1,6 @@
 /*
- *  Copyright (c) 1999 Jan Bobrowski
- *  email: jb@wizard.ae.krakow.pl
- *  licence: GNU LGPL
- *  version: 19990810
+ *  Jan Bobrowski <jb@wizard.ae.krakow.pl>
+ *  version: 20000508
  */
 
 #include <unistd.h>
@@ -13,7 +11,6 @@
 #include <ctype.h>
 #include <string.h>
 #include "config.h"
-
 
 #ifdef HAVE_PROCESS_SYSCTL
 #include <sys/param.h>
@@ -151,11 +148,7 @@ static inline void change_parent(struct proc_t* p,struct proc_t* q)
 	p->parent = q;
 }
 
-#ifdef USE_PT_PRIV
 int update_tree(void del(void*))
-#else
-int update_tree()
-#endif
 {
 #ifdef HAVE_PROCESS_SYSCTL
 	struct kinfo_proc *pi;
@@ -185,9 +178,7 @@ int update_tree()
 		q = validate_proc(info.ppid);
 #endif
 		if(p->parent != q){
-#ifdef USE_PT_PRIV
 			if(p->priv) del(p->priv);
-#endif
 
 			change_parent(p,q);
 		}
@@ -205,9 +196,7 @@ int update_tree()
 		if(is_on_list(p,broth))
 			list_del(p,broth);
 		q = p->mlist.nx;
-#ifdef USE_PT_PRIV
 		if(p->priv) del(p->priv);
-#endif
 		remove_proc(p);
 		n++;
 	}
@@ -217,53 +206,69 @@ int update_tree()
 
 /* ---------------------- */
 
-static struct proc_t *ptr;
-static char *lp;
-static char *buf;
+static struct proc_t *proc, *root;
 
-struct proc_t* tree_start(int root, int pid, char *b)
+struct proc_t* tree_start(int root_pid, int start_pid)
 {
-	char tmp[128], *s;
-	struct proc_t *p;
-
-	lp = buf = b;
-	ptr = find_by_pid(pid);
-	if (!ptr) return 0;
-	s = tmp;
-	for(p=ptr; p->pid!=root && p->pid!=1; p=p->parent)
-		*s++ = p->broth.nx ? '|' : ' ';
-	if(s > tmp) {
-		do {
-			*lp++ = ' ';
-			*lp++ = *--s;
-		} while(s > tmp);
-		if(lp[-1] == ' ')
-			lp[-1] = '`';
-	}
-
-	*lp = 0;
-	return ptr;
+	root = find_by_pid(root_pid);
+	if (!root) return 0;
+	proc = find_by_pid(start_pid);
+	return proc;
 }
 
 struct proc_t* tree_next()
 {
-	if(ptr->child) {
-		if(lp>buf && !ptr->broth.nx)
-			lp[-1]=' ';
-		ptr = ptr->child;
-		memcpy(lp," |",3);
-		lp+=2;
-	} else
-		for(;;) {
-			if(lp==buf) return 0;
-			if(ptr->broth.nx) {
-				ptr = ptr->broth.nx;
-				break;
-			}
-			lp -= 2;
-			*lp=0;
-			ptr=ptr->parent;
+	if(proc->child) {
+		proc = proc->child;
+	} else for(;;) {
+		if(proc->broth.nx) {
+			proc = proc->broth.nx;
+			break;
 		}
-	if(!ptr->broth.nx) lp[-1] = '`';
-	return ptr;
+		
+		proc = proc->parent;
+		if(proc == root) {
+			proc = 0;
+			break;
+		}
+	}
+	return proc;
+}
+
+static char buf[2+2*PROC_DEPTH];
+
+char* tree_string(int root, struct proc_t *p)
+{
+	struct proc_t *q;
+	char *s;
+	int i, d;
+
+	i = 0;
+	for(q=p; q->pid!=root && q->pid!=1; q=q->parent)
+		i++;
+	d = i;
+
+	while(i>PROC_DEPTH)
+		p=p->parent, i--;
+
+	s = buf + 2*i;
+	s[1] = 0;
+	s[0] = '.';
+
+	if(d<=PROC_DEPTH) {
+		s[0] = '-';
+		if(i > 0 && !p->broth.nx) {
+			*--s = '`';
+			goto loop;
+		}
+	}
+
+	while(i > 0) {
+		*--s = p->broth.nx ? '|' : ' ';
+loop:
+		*--s = ' ';
+		p=p->parent, i--;
+	}
+
+	return buf;
 }

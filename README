@@ -1,6 +1,4 @@
-Whowatch 1.3.1
-
-Whowatch is Linux ncurses who-like utility that displays informations about 
+Whowatch is an interactive console utility that displays informations about 
 the users currently logged on to the machine, in real time. 
 Besides standard information (login, tty, host, user's process) you can 
 see type of login (ie. ssh, telnet). You can also see selected user's 
@@ -8,24 +6,3 @@ processes tree or all system processes.
 In the process tree mode there is ability to send INT or KILL signal to
 selected process.
 
-Whowatch should compile on any Linux machine.
-(was tested on Slackware and few RedHat's)
-
-To compile just type 'make'.
-
-If you want to use whowatch you have to have read access to /proc
-, wtmp and utmp.
-
-Notes:
-- Whowatch depends on utmp and wtmp files. 
-  If some program doesn't write to wtmp file whowatch has no way to know 
-  that user logged in or logged out. There is such a problem with xterm. 
-  If you have for example four opened xterms then run whowatch, it will 
-  show you four logins as type '(xterm)'. But if you close one of these 
-  xterms whowatch still will be displaying four xterm logins. You have to 
-  press 'x' key to update data.
-
-author: Michal Suszycki 
-	
-	mike@wizard.ae.krakow.pl	
-	http://wizard.ae.krakow.pl/~mike

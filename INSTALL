@@ -1,0 +1,8 @@
+Compile:
+
+./configure; make
+
+Tested on Linux, FreeBSD and OpenBSD
+
+Install:
+make install

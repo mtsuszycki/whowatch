@@ -12,6 +12,15 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include "config.h"
+
+
+#ifdef HAVE_PROCESS_SYSCTL
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#include <sys/user.h>
+#endif
+
 #include "proctree.h"
 
 #define PROCDIR "/proc"
@@ -33,11 +42,16 @@
 
 #define change_head(a,b,f) ({b=a; if(a) a->f.ppv=&b;})
 
+#ifdef HAVE_PROCESS_SYSCTL
+int get_all_info(struct kinfo_proc **);
+#endif 
+
 struct pinfo {
 	int pid;
 	int ppid;
 };
 
+#ifndef HAVE_PROCESS_SYSCTL
 static inline int get_pinfo(struct pinfo* i,DIR* d)
 {
 	static char name[32] = PROCDIR "/";
@@ -65,10 +79,11 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 	}
 	return 1;
 }
+#endif
 
-static struct proc proc_init = {1,&proc_init};
-static struct proc *hash_table[HASHSIZE];
-static struct proc *main_list = 0;
+static struct proc_t proc_init = {1,&proc_init};
+static struct proc_t *hash_table[HASHSIZE];
+static struct proc_t *main_list = 0;
 int num_proc = 1;
 
 static inline int hash_fun(int n)
@@ -76,9 +91,9 @@ static inline int hash_fun(int n)
 	return n&(HASHSIZE-1);
 }
 
-struct proc* find_by_pid(int n)
+struct proc_t* find_by_pid(int n)
 {
-	struct proc* p;
+	struct proc_t* p;
 	if(n<=1) return &proc_init;
 
 	p = hash_table[hash_fun(n)];
@@ -89,9 +104,9 @@ struct proc* find_by_pid(int n)
 	return p;
 }
 
-static struct proc* cache = 0;
+static struct proc_t* cache = 0;
 
-static inline void remove_proc(struct proc* p)
+static inline void remove_proc(struct proc_t* p)
 {
 	list_del(p,hash);
 	if(cache) free(cache);
@@ -99,12 +114,12 @@ static inline void remove_proc(struct proc* p)
 	num_proc--;
 }
 
-static inline struct proc* new_proc(int n)
+static inline struct proc_t* new_proc(int n)
 {
-	struct proc* p = cache;
+	struct proc_t* p = cache;
 	cache = 0;
 	if(!p)
-		p = (struct proc*) malloc(sizeof *p);
+		p = (struct proc_t*) malloc(sizeof *p);
 	memset(p,0,sizeof *p);
 	p->pid = n;
 
@@ -114,9 +129,9 @@ static inline struct proc* new_proc(int n)
 	return p;
 }
 
-static struct proc *validate_proc(int pid)
+static struct proc_t *validate_proc(int pid)
 {
-	struct proc* p;
+	struct proc_t* p;
 	if(pid<=1) return &proc_init;
 
 	p = find_by_pid(pid);
@@ -128,7 +143,7 @@ static struct proc *validate_proc(int pid)
 	return p;
 }
 
-static inline void change_parent(struct proc* p,struct proc* q)
+static inline void change_parent(struct proc_t* p,struct proc_t* q)
 {
 	if(is_on_list(p,broth))
 		list_del(p,broth);
@@ -142,14 +157,25 @@ int update_tree(void del(void*))
 int update_tree()
 #endif
 {
-	DIR* d;
+#ifdef HAVE_PROCESS_SYSCTL
+	struct kinfo_proc *pi;
+	int i, el;
+#else
 	struct pinfo info;
-	struct proc *p,*q;
-	struct proc *old_list;
+	DIR *d;
+#endif
+	struct proc_t *p,*q;
+	struct proc_t *old_list;
 	int n = num_proc;
-
 	change_head(main_list,old_list,mlist);
 	main_list = 0;
+	
+#ifdef HAVE_PROCESS_SYSCTL
+	el = get_all_info(&pi);
+	for(i = 0; i < el; i++) {
+		p = validate_proc(pi[i].kp_proc.p_pid);
+		q = validate_proc(pi[i].kp_eproc.e_ppid);		 		
+#else
 
 	d=opendir(PROCDIR);
 	if(d<0) return -1;
@@ -157,6 +183,7 @@ int update_tree()
 	while( get_pinfo(&info,d) ) {
 		p = validate_proc(info.pid);
 		q = validate_proc(info.ppid);
+#endif
 		if(p->parent != q){
 #ifdef USE_PT_PRIV
 			if(p->priv) del(p->priv);
@@ -165,8 +192,11 @@ int update_tree()
 			change_parent(p,q);
 		}
 	}
+#ifdef HAVE_PROCESS_SYSCTL
+	free(pi);
+#else
 	closedir(d);
-
+#endif
 	n = num_proc - n;
 
 	for(p = old_list; p; p=q) {
@@ -187,14 +217,14 @@ int update_tree()
 
 /* ---------------------- */
 
-static struct proc *ptr;
+static struct proc_t *ptr;
 static char *lp;
 static char *buf;
 
-struct proc* tree_start(int root, int pid, char *b)
+struct proc_t* tree_start(int root, int pid, char *b)
 {
 	char tmp[128], *s;
-	struct proc *p;
+	struct proc_t *p;
 
 	lp = buf = b;
 	ptr = find_by_pid(pid);
@@ -215,7 +245,7 @@ struct proc* tree_start(int root, int pid, char *b)
 	return ptr;
 }
 
-struct proc* tree_next()
+struct proc_t* tree_next()
 {
 	if(ptr->child) {
 		if(lp>buf && !ptr->broth.nx)

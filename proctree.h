@@ -1,14 +1,14 @@
 #define USE_PT_PRIV
 
 struct plist {
-	struct proc* nx;
-	struct proc** ppv;
+	struct proc_t* nx;
+	struct proc_t** ppv;
 };
 
-struct proc {
+struct proc_t {
 	int pid;
-	struct proc *parent;
-	struct proc *child;
+	struct proc_t *parent;
+	struct proc_t *child;
 	struct plist mlist;
 	struct plist broth;
 	struct plist hash;
@@ -22,8 +22,8 @@ int update_tree(void del(void*));
 #else
 int update_tree();
 #endif
-struct proc* find_by_pid(int pid);
-struct proc* tree_start(int root,int pid,char* buf);
-struct proc* tree_next();
+struct proc_t* find_by_pid(int pid);
+struct proc_t* tree_start(int root,int pid,char* buf);
+struct proc_t* tree_next();
 
 extern int num_proc;

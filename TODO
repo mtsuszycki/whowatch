@@ -1,13 +1,7 @@
-Some ideas:
-- make whowatch aware of screen resizing (switching from ncurses to slang 
-  library?).
-- add ability to display process' open files. If file is a socket then 
-  display IP addresses or host names (needs smart helper-resolver)
-- add configuration file where user could specify what program to launch
-  when hitting key in users list mode. You could then select user and run
-  ie. ttysnoop on the appropriate tty.
-  
-If you have some other ideas you are welcome to send me an email.
-
-<mike@wizard.ae.krakow.pl>
+- Support for PAGE_UP and PAGE_DOWN
+- Add functions that handle screen resizing
+- Add async events (dialog boxes etc)
+- Fix cursor movement functions
+- Uniform list handling (list_head)
+- Resign from ncurses library (?)
   

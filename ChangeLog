@@ -1,0 +1,61 @@
+
+                             Whowatch changelog
+                                      
+   27 February 2000
+       
+   - corrections in the man page, small bug fix, RPM package
+       
+   6 September 1999
+   - all screen routines rewritten, added cursor movement in the process
+       tree, added ability to send INT and KILL signals and to show
+       process' owner
+       
+   28 June 1999
+   - added ability to display all system processes (init tree)
+       
+   27 June 1999
+   - fixed bug with key handling and SIGINT handling reported by
+       [1]Christophe Long at [2]Webmotion Inc.
+       
+   3 June 1999
+   - added cursor and support for screen scrolling
+       
+   25 June 1999
+   - added code for processes tree written by [3]Jan Bobrowski (see [4]jb
+       )
+       
+   3 June 1999
+   - added cursor and support for screen scrolling
+       
+   4 April 1999
+   - added 't' key to toggle display between processes and users' idle
+       time
+       - fixed seg fault when size of utmp file at the program start was
+       zero (reported by Sean Chittenden)
+       - faster response for key pressing
+       - code cleanup
+       
+   30 March 1999
+   - new type of logins ('local login') and support for sshd1 added by
+       Jayson Larose(jayson@linuxbox.com)
+       - added 'q' key to quit
+       - more info in README
+       
+   20 March 1999
+   - fixed problem with line updating
+       
+   14 March 1999
+   - added 'r' key to restart
+       
+   12 March 1999
+   - added colors and processes information
+       
+   9 March 1999
+   - fixed seg fault when user immediately logged out after loggin in
+
+References
+
+   1. mailto:Christophe.LONG@enst-bretagne.fr
+   2. http://www.webmotion.net/
+   3. mailto:jb@wizard.ae.krakow.pl
+   4. http://wizard.ae.krakow.pl/~jb

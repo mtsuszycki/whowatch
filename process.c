@@ -1,8 +1,6 @@
 #include "whowatch.h"
 #include "proctree.h"
 
-
-
 int allocated;
 int lines_before_curs;	/* how many lines was inserted before cursor */
 	
@@ -20,7 +18,7 @@ void proc_del(struct process *p)
 void mark_del(void *vp)
 {
 	struct process *p = (struct process *) vp;
-	struct proc *q;
+	struct proc_t *q;
 
 	q = p->proc;
 	for(q = q->child; q; q = q->broth.nx)
@@ -59,7 +57,7 @@ void synchronize()
 {
 	char buf[64];
 	int l = 0;
-	struct proc *p = tree_start(tree_pid, tree_pid, buf);
+	struct proc_t *p = tree_start(tree_pid, tree_pid, buf);
 	struct process **current = &begin, *z;
 	while(p){
 		if (*current && p->priv){
@@ -176,7 +174,7 @@ void dump_list()
 #endif
 }
 
-void tree_title(struct user *u)
+void tree_title(struct user_t *u)
 {
 	char buf[128];
 	if (!u) sprintf(buf,"%d processes", allocated);

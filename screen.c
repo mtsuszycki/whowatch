@@ -1,5 +1,5 @@
 #include "whowatch.h"
-
+#include "config.h"
 
 #define real_line_nr(x,y)	((x) - (y)->first_line)
 
@@ -59,6 +59,7 @@ void curses_end()
         printf("\033[?25h");            /* enable cursor */
 }
 
+#ifdef HAVE_MVWCHGAT
 void cursor_on(struct window *w, int line)
 {
 	mvwchgat(w->descriptor, line, 0, -1, CURSOR_COLOR, 0, 0);
@@ -74,6 +75,27 @@ void cursor_off(struct window *w, int line)
 	wnoutrefresh(w->descriptor);
 	doupdate();
 }
+#else
+void cursor_on(struct window *w, int line)
+{
+	chtype c;
+	int i;
+	wattrset(w->descriptor, A_REVERSE);
+	for(i = 0; i < w->cols + 1; i++) { 
+		c = mvwinch(w->descriptor, line, i) & A_CHARTEXT;
+		waddch(w->descriptor, c);
+	}
+	touchline(w->descriptor, line, 1);
+	wnoutrefresh(w->descriptor);
+	doupdate();
+	wattrset(w->descriptor, A_BOLD);
+}
+
+void cursor_off(struct window *w, int line)
+{
+	return;
+}
+#endif
 
 void move_cursor(struct window *w, int from, int to)
 {

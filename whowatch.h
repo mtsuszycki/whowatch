@@ -9,13 +9,31 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
-#include <curses.h>
+#include <ncurses.h>
 #include <assert.h>
 
 #define CURSOR_COLOR	A_REVERSE
 #define NORMAL_COLOR	A_NORMAL
 #define CMD_COLUMN	52
 
+
+#define for_each(e,l) 	for((e)=(l).next; (e)!=(void *) &(l); (e)=(e)->next)
+#define addto_list(e,l)	{(e)->prev=(l).prev;		\
+			 (e)->prev->next=(e);		\
+			 (e)->next=(typeof(e))&l;	\
+			 (l).prev=(e);}
+#define delfrom_list(e,l) {(e)->prev->next=(e)->next;	\
+			   (e)->next->prev=(e)->prev; }
+
+#define dellist(e,l)	{ void *p;			\
+			  for((e)=(l).next; (e)!=(void *) &(l); (e)=p){	\
+			  	p=(e)->next;		\
+				delfrom_list((e),(l));	\
+				free((e));		\
+			  }				\
+			}		
+
+			
 extern int allocated;		/* number of processes */
 extern FILE *debug_file;
 extern int show_owner;		/* if 0 don't show process owner (in tree) */
@@ -40,15 +58,21 @@ extern struct window proc_win;
 extern struct window help_win;
 extern struct window info_win;
 
-struct user
+struct list_head
 {
-        char *name;
-        char *tty;
+	void *next;
+	void *prev;
+};
+
+struct user_t
+{
+	struct user_t *next;
+	struct user_t *prev;
+        char name[UT_NAMESIZE + 1];
+        char tty[UT_LINESIZE + 1];
         int prot;
         int pid;
 	char parent[16];
-        struct user **prev;
-        struct user *next;
         char host[UT_HOSTSIZE + 1];
         int line;
 };
@@ -60,7 +84,7 @@ struct process
         int line;
 	char state;
 	int uid;
-	struct proc *proc;
+	struct proc_t *proc;
 };
 
 extern int tree_pid;
@@ -75,7 +99,7 @@ char *proc_give_line(int line);
 void dump_list();
 pid_t pid_from_tree(int line);
 void maintree(int pid);
-void tree_title(struct user *p);
+void tree_title(struct user_t *p);
 void clear_tree_title();
 
 /* screen.c */								
@@ -100,7 +124,10 @@ int update_tree();
 
 void get_rows_cols(int *, int *);
 
-/* proc.c */
+/* procinfo.c */
+#ifdef HAVE_PROCESS_SYSCTL
+int get_login_pid(char *tty);
+#endif
 char *get_cmdline(int);
 int get_ppid(int);
 char *get_name(int);
@@ -111,5 +138,4 @@ char *count_idle(char *tty);
 
 /* owner.c */
 char *get_owner_name(int u);
-
 

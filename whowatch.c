@@ -1,6 +1,8 @@
-#include "whowatch.h"
+#include <err.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include "whowatch.h"
+#include "config.h"
 
 #ifndef UTMP_FILE
 #define UTMP_FILE 	"/var/run/utmp"
@@ -14,12 +16,18 @@
 #define LOGIN		0
 #define LOGOUT		1		
 
+#ifdef HAVE_UT_NAME
+#define ut_user ut_name
+#endif
+
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K, CTRL_I};
 enum State{ USERS_LIST, PROC_TREE, INIT_TREE } state;
 
 struct window users_list, proc_win;
 struct window *windows[] = { &users_list, &proc_win, &proc_win };
 int screen_size_changed;	/* not yet implemented */
+
+struct list_head users = { &users, &users };
 
 #ifdef DEBUG
 FILE *debug_file;
@@ -32,7 +40,6 @@ int signal_sent;
 
 int how_many, telnet_users, ssh_users, local_users;
 
-struct user *begin;	/* pointer to begining of users list 		*/
 int wtmp_fd;		/* wtmp file descriptor 			*/
 int screen_rows;	/* screen rows returned by ioctl		*/
 int screen_cols;	/* screen cols returned by ioctl		*/
@@ -40,9 +47,15 @@ int screen_cols;	/* screen cols returned by ioctl		*/
 char *line_buf;		/* global buffer for line printing		*/
 int buf_size;		/* allocated buffer size			*/
 
+#ifdef HAVE_PROCESS_SYSCTL
+char * const ssh    = 	"sshd";   
+char * const local  =	"init";
+char * const telnet = 	"telnetd";
+#else
 char * const ssh    = 	"(sshd";    /* we don't know version of sshd 	*/
 char * const local  =	"(init)";
 char * const telnet = 	"(in.telnetd)";
+#endif
 
 int ssh_port = 22;
 int telnet_port = 23;
@@ -54,6 +67,14 @@ int show_owner;		/* if 1 display processes owners		*/
 void show_cmd_or_idle();
 void dump_users();	/* for debugging				*/
 void cleanup();
+
+#ifdef HAVE_PROCESS_SYSCTL
+int get_login_pid(char *);
+#endif
+
+#ifdef HAVE_LIBKVM
+void kvm_init();
+#endif
 
 void allocate_error(){
 	curses_end();
@@ -83,48 +104,42 @@ void update_nr_users(char *login_type, int *pprot, int x)
 		}
 	}
 }
+
 void update_line_nr(int line)
 {
-	struct user *p;
-	for(p = begin; p; p = p->next)
-		if (p->line > line)
-			p->line--;
+	struct user_t *u;
+	for_each(u, users) 
+		if(u->line > line) u->line--;
 }
 			
 /* 
  * Create new user structure and fill it
  */
-struct user *allocate_user(struct utmp *entry)
+struct user_t *allocate_user(struct utmp *entry)
 {
-	struct user *tmp;
+	struct user_t *u;
 	int ppid;
+	u = calloc(1, sizeof *u);
+	if(!u) errx(1, "Cannot allocate memory.");
+	strncpy(u->name, entry->ut_user, UT_NAMESIZE);
+	strncpy(u->tty, entry->ut_line, UT_LINESIZE);
+	strncpy(u->host, entry->ut_host, UT_HOSTSIZE);
 	
-	if (!(tmp = malloc(sizeof (struct user)) ))
-		allocate_error();
-	memset(tmp, 0, sizeof *tmp);
-	if (!(tmp->name = malloc(UT_NAMESIZE + 1)))
-		allocate_error();
-	tmp->name[UT_NAMESIZE] = '\0';
-	strncpy(tmp->name,entry->ut_user,UT_NAMESIZE);
+#ifdef HAVE_UTPID		
+	u->pid = entry->ut_pid;
+#else
+	u->pid = get_login_pid(u->tty);
+#endif
 
-	if (!(tmp->tty = malloc(UT_LINESIZE + 1)))
-		allocate_error();
-	tmp->tty[UT_LINESIZE] = '\0';	
-	strncpy(tmp->tty,entry->ut_line,UT_LINESIZE);
-	strncpy(tmp->host,entry->ut_host,UT_HOSTSIZE);
-	tmp->host[UT_HOSTSIZE] = '\0';
-		
-	tmp->pid = entry->ut_pid;
-
- 	if((ppid = get_ppid(tmp->pid)) == -1)
-		strncpy(tmp->parent, "can't access", sizeof tmp->parent);
-	else 	strncpy(tmp->parent, get_name(ppid), sizeof tmp->parent - 1);
+ 	if((ppid = get_ppid(u->pid)) == -1)
+		strncpy(u->parent, "can't access", sizeof u->parent);
+	else 	strncpy(u->parent, get_name(ppid), sizeof u->parent - 1);
 	
-	tmp->line = how_many;
-	return tmp;
+	u->line = how_many;
+	return u;
 }
 	
-void print_user(struct user *u)
+void print_user(struct user_t *u)
 {
 	wattrset(users_list.descriptor, A_BOLD);
 	snprintf(line_buf, buf_size, 
@@ -141,16 +156,10 @@ void print_user(struct user *u)
 
 void cleanup()
 {
-	struct user *u = begin, *p;
-	while(u){
-		p = u->next;
-		free(u->name);
-		free(u->tty);
-		free(u);
-		u = p;
-	}
-	begin = NULL;
-	clear_list();			/* clear processes list */
+	struct user_t *u;
+	dellist(u, users);
+	/* clear list of processes */
+	clear_list();			
 	close(wtmp_fd);
 }
 
@@ -166,118 +175,107 @@ void windows_init()
 
 void users_list_refresh()
 {
-	struct user *p;
-	for(p = begin; p; p = p->next) print_user(p);
+	struct user_t *u;
+	for_each(u, users) print_user(u);
 	wrefresh(users_list.descriptor);
 }
 	
-
-void read_utmp()		/* when program starts */
+/*
+ * Gather informations about users currently on the machine
+ * Needed only at start or restart
+ */
+void read_utmp()		
 {
 	int fd, i;
 	static struct utmp entry;
-	struct user *tmp, **current = &begin;
+	struct user_t *u;
 	
 	if ((fd = open(UTMP_FILE ,O_RDONLY)) == -1){
 		curses_end();
-		fprintf(stderr,"Cannot open " UTMP_FILE "\n");
-		exit (1);
+		errx(1, "Cannot open " UTMP_FILE);
 	}
-	tmp = NULL;
-	while((i = read(fd, &entry,sizeof entry)) > 0){
-		if (i != sizeof entry){
-			fprintf(stderr, "Error reading " UTMP_FILE "\n");
-			exit(1);
-		}
-		if (entry.ut_type != 7) continue;
-		tmp = allocate_user(&entry);
-		print_user(tmp);
-		update_nr_users(tmp->parent, &tmp->prot, LOGIN);		
+	while((i = read(fd, &entry,sizeof entry)) > 0) {
+		if(i != sizeof entry) errx(1, "Error reading " UTMP_FILE );
+#ifdef HAVE_USER_PROCESS
+		if(entry.ut_type != USER_PROCESS) continue;
+#else
+		if(!entry.ut_name[0]) continue;
+#endif
+		u = allocate_user(&entry);
+		print_user(u);
+		update_nr_users(u->parent, &u->prot, LOGIN);		
 		how_many++;
-		*current = tmp;
-		tmp->prev = current;
-		current = &tmp->next;
+		addto_list(u, users);
 	}
-	*current = NULL;
 	close(fd);
 	wrefresh(users_list.descriptor);
 	return;
 }
 
-struct user* new_user(struct utmp *newone)
+struct user_t* new_user(struct utmp *newone)
 {
-	struct user *i = begin,*tmp;
-
-	tmp = allocate_user(newone);
+	struct user_t *u;
+	u = allocate_user(newone);
 	how_many++;
-	tmp->next = NULL;
-	
-/* Begin could be null (if utmp was empty at the program's start) */
-	if (!begin){
-		begin = tmp;
-		tmp->prev = &begin;
-	}
-	else {
-		while(i->next) i=i->next;
-		i->next = tmp;	
-		tmp->prev = &i->next;
-	}
-	update_nr_users(tmp->parent, &tmp->prot, LOGIN);
-	return tmp;
+	addto_list(u, users);
+	update_nr_users(u->parent, &u->prot, LOGIN);
+	return u;
 }
 
-struct user *cursor_user(int line)	/* get user from cursos position */
+/*
+ * get user entry from specific line (cursor position)
+ */
+struct user_t *cursor_user(int line)	
 {
-	struct user *u;
-	for(u = begin; u; u = u->next)
-		if (u->line == line) return u;
+	struct user_t *u;
+	for_each(u, users) if(u->line == line) return u;
 	return 0;
 }
 
-
+/*
+ * Check wtmp for logouts or new logins
+ */
 void check_wtmp()
 {
-	struct user *f, *tmp;
+	struct user_t *u;
 	struct utmp entry;
 	int i;
-	while ((i = read(wtmp_fd, &entry, sizeof entry)) > 0){ 
+
+	while((i = read(wtmp_fd, &entry, sizeof entry)) > 0){ 
 		if (i < sizeof entry){
 			curses_end();
 			cleanup();
-			fprintf(stderr,"Error reading " WTMP_FILE "\n.");
-			exit(1);
+			errx(1, "Error reading " WTMP_FILE );
 		}
-/* user just logged in */
-		if (entry.ut_type == 7){
-			tmp = new_user(&entry);
-			print_user(tmp);
+		/* user just logged in */
+#ifdef HAVE_USER_PROCESS
+		if(entry.ut_type == USER_PROCESS) {
+#else
+		if(entry.ut_user[0]) {
+#endif
+			u = new_user(&entry);
+			print_user(u);
 			wrefresh(users_list.descriptor);
 			print_info();
 			continue;
 		}
-		if (entry.ut_type != 8) continue;
-/* user just logged out */
-		f = begin;
-		while(f){
-			if (strncmp(f->tty, entry.ut_line, UT_LINESIZE)) {
-				f = f->next;
+#ifdef HAVE_DEAD_PROCESS
+		if(entry.ut_type != DEAD_PROCESS) continue;
+#else
+//		if(entry.ut_line[0]) continue;
+#endif
+	/* user just logged out */
+		for_each(u, users) {
+			if(strncmp(u->tty, entry.ut_line, UT_LINESIZE)) 
 				continue;
-			}
 			if (state == USERS_LIST) 
-				delete_line(&users_list, f->line);
-			else virtual_delete_line(&users_list, f->line);
-			
-			update_line_nr(f->line);
+				delete_line(&users_list, u->line);
+			else virtual_delete_line(&users_list, u->line);
+			update_line_nr(u->line);
 			how_many--;
-			update_nr_users(f->parent, &f->prot, LOGOUT);
+			update_nr_users(u->parent, &u->prot, LOGOUT);
 			print_info();
-
-			tmp = f->next;
-			*(f->prev) = tmp;
-			if (tmp) tmp->prev = f->prev;
-			free(f->tty);
-			free(f->name);
-			free(f);
+			delfrom_list(u, users);
 			break;
 		}
 	}
@@ -285,8 +283,8 @@ void check_wtmp()
 
 char *users_list_giveline(int line)
 {
-	struct user *u;
-	for(u = begin; u; u = u->next){
+	struct user_t *u;
+	for_each(u, users) {
 		if (line == u->line){
 			snprintf(line_buf, buf_size, 
 				"%-14.14s %-9.9s %-6.6s %-19.19s %s", 
@@ -303,8 +301,8 @@ char *users_list_giveline(int line)
 
 void periodic()
 {
-	check_wtmp();		/* always check wtmp for logins and logouts */
-	
+	/* always check wtmp for logins and logouts */
+	check_wtmp();		
 	switch(state){
 		case INIT_TREE:
 			tree_periodic();
@@ -363,14 +361,10 @@ void send_signal(int sig, pid_t pid)
 
 void main_init()
 {
-	if ((wtmp_fd = open(WTMP_FILE ,O_RDONLY)) == -1){
-		fprintf(stderr,"Cannot open " WTMP_FILE "\n");
-		exit (1);
-	}
-	if (lseek(wtmp_fd, 0, SEEK_END) == -1){
-		perror("lseek");
-		exit (1);
-	}
+	if((wtmp_fd = open(WTMP_FILE ,O_RDONLY)) == -1) 
+		errx(1, "Cannot open " WTMP_FILE);
+	if(lseek(wtmp_fd, 0, SEEK_END) == -1) 
+		errx(1, "Cannot seek in " WTMP_FILE);
 }
 
 void restart()
@@ -394,7 +388,7 @@ void restart()
 void key_action(int key)
 {
 	int pid;
-	struct user *p;
+	struct user_t *p;
 	if (signal_sent) {
 	    print_help(state);
 	    signal_sent = 0;
@@ -518,15 +512,16 @@ void winch_handler()
 void dump_users()
 {
 #ifdef DEBUG
-	struct user *u = begin;
-	fprintf(debug_file,"begin %p\n", begin);
-	for (u = begin; u ; u = u->next)
+	struct user_t *u;
+	fprintf(debug_file, "%p %p\n", users.next, users.prev);
+	for_each(u, users) 
 		fprintf(debug_file,"%p, prev %p, next %p, %s, %s\n",
 			u, 
 			u->prev, 
 			u->next, 
 			u->name, 
-			u->tty);
+			u->tty
+			);
 	fflush(debug_file);
 #endif
 
@@ -558,7 +553,11 @@ int main()
 	struct timeval tv;
 	fd_set rfds;
 	int retval;
-	main_init();	
+	main_init();
+#ifdef HAVE_LIBKVM
+	kvm_init();
+#endif
+	
 #ifdef DEBUG
 	if (!(debug_file = fopen("debug", "w"))){
 		printf("file debug open error\n");
@@ -589,35 +588,40 @@ int main()
 	
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
-	for(;;){				/* main loop */
+	for(;;) {				/* main loop */
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);
 		retval = select(1,&rfds,0,0,&tv);
-		if (retval){
+		if(retval) {
 			int key = read_key();
 			key_action(key);
+			tv.tv_sec = TIMEOUT;
 		}
+//#ifdef RETURN_TV_IN_SELECT
+// fix configure!
+#ifdef linux
 		if (!tv.tv_sec && !tv.tv_usec){
 			periodic();
 			tv.tv_sec = TIMEOUT;
 		}
+#else
+		periodic();
+#endif
 	}
 }
 
 void show_cmd_or_idle()
 {
-	struct user *p = begin;
 	struct window *q = &users_list;
-	while(p){
-		if (p->line < q->first_line || p->line > q->last_line) {
-			p = p->next;
+	struct user_t *u;
+	for_each(u, users) {
+		if (u->line < q->first_line || u->line > q->last_line) 
 			continue;
-	        }
-	        wmove(q->descriptor, p->line - q->first_line, CMD_COLUMN);
+	        
+	        wmove(q->descriptor, u->line - q->first_line, CMD_COLUMN);
 		wclrtoeol(q->descriptor);
-	        waddnstr(q->descriptor, toggle?count_idle(p->tty):get_w(p->pid),
+	        waddnstr(q->descriptor, toggle?count_idle(u->tty):get_w(u->pid),
 	            COLS - CMD_COLUMN - 1);
-	        p = p->next;
 	}
 	cursor_on(q, q->cursor_line);
 	wattrset(q->descriptor, A_BOLD);

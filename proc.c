@@ -1,4 +1,6 @@
 #include "whowatch.h"
+#include "proctree.h"
+#include <pwd.h>
 
 /*
  * Find parent pid (in /proc/pid/stat)
@@ -31,24 +33,32 @@ char *get_name(int pid)
 	return buf;
 }
 
-char get_state(int pid)
+void get_state(struct process *p)
 {
 	static char buf[256];
+	struct stat s;
 	char state;
         FILE *f;
-        sprintf(buf,"/proc/%d/stat",pid);
-        if (!(f = fopen(buf,"rt")))
-               	return '?';
+        sprintf(buf,"/proc/%d", p->proc->pid);
+	p->uid = -1;
+	if (stat(buf, &s) >= 0) p->uid = s.st_uid;  
+	strcat(buf,"/stat");
+        if (!(f = fopen(buf,"rt"))){
+               	p->state = '?';
+		return;
+	}
         fscanf(f,"%*d %*s %c",&state);
 	fclose(f);
-	return state;
+	if (state == 'S') state = ' ';
+	p->state = state;
 }
+
 /*
  * Get process' command line
  */
 char *get_cmdline(int pid)
 {
-        static char buff[512];
+        static char buff[256];
         FILE *f;
         int i = 0;
         sprintf(buff,"/proc/%d/cmdline",pid);

@@ -1,38 +1,38 @@
-.TH WHOWATCH 1 "Jul 28 1999"
+.TH WHOWATCH 1 "Aug 14 1999"
 .SH NAME
 whowatch \- watch logged users in real time
-.SH SYNOPSIS
-\fBwhowatch\fR  
-[
-\-c
-]
 .SH DESCRIPTION
-\fBWhowatch\fR is a console who-like program which displays list of logged
-users in real time. Besides typical informations (username, tty, "from" 
-host, command line or users' idle time) you can see connection type 
-(ie. telnet, ssh). \fBWhowatch\fR has support for cursor movement and screen
-scrolling. You can select a user and view his processes tree. There is also
-posibility to display all system processes tree.
+\fBWhowatch\fR is a ncurses who-like utility that displays information 
+about the users currently logged on to the machine, in real-time.
+Besides standard informations (login name, tty, host, user's process),
+the type of the connection (ie. telnet or ssh) is shown.
+Display of users command line can be switch to tty idle time.
+Certain user can be selected and his processes tree may be viewed as well
+as tree of all system processes. Tree may be displayed with additional
+column that shows owner of each process.
+In the process tree mode SIGINT and SIGKILL signals can be sent to the 
+selected process. 
 .PP
 .nh
-.SH OPTIONS
-For now there is only one option \fB\-c\fR to force color mode.
-.SH KEYS
-\fBWhowatch\fR has no configuration file. 
+\fBWhowatch\fR has no command line options or configuration file. 
 All action is performed in real time by pressing following keys:
 .PP
-.TP
-up, down -  cursor movement
-.TP
-t - toggle display between users' command line and their idle time
-.TP
-enter - view user's processes tree or go back to list
-.TP
-i - view all system processes (tree from init)
-.TP
-x - restart
-.TP
-q - quit
+Users list mode:
+.PP
+.nf
+up, down - cursor movement
+t - toggle between user command line and idle time
+enter - view selected user's processes tree.
+i - all system processes (init tree)
+.PP
+Tree mode:
+.PP
+.nf
+up, down - cursor movement
+enter - go back to users list
+o - show processes owners
+Ctrl-I - send INT signal to selected process
+Ctrl-K - send KILL signal to selected process
 
 .SH FILES
 Program reads \fI/var/log/wtmp\fR, \fI/var/run/utmp\fR and files from
@@ -41,14 +41,15 @@ funcionality will be limited or program will not even start.
 
 .PD
 .SH "SEE ALSO"
+.BR finger (1)
 .BR ps (1),
 .BR pstree (1),
-.BR finger (1)
+.BR top (1),
 .BR w (1),
 
 .SH AUTHOR
 .nf
 Michal Suszycki <mike@wizard.ae.krakow.pl>
-Tree functions written by Jan Bobrowski <jb@wizard.ae.krakow.pl>
+Tree functions by Jan Bobrowski<jb@wizard.ae.krakow.pl>
 .fi
 

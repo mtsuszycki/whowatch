@@ -1,302 +1,265 @@
 #include "whowatch.h"
 
 
-int color;
-void cursor_up();
-char *infos[]={ 
-	"enter - processes, t - command/idle, i - init tree, x - restart, q - quit",
-	"enter - users list, x - restart, q - quit"};
-	
+#define real_line_nr(x,y)	((x) - (y)->first_line)
 
-void endprg()
-{
-	erase();
-	werase(mainw);
-	wrefresh(mainw);
-	refresh();
-	endwin();
-	printf("\033[?25h");		/* enable cursor */
-}
+struct window help_win;
+struct window info_win;
 
-void help_line(int which)
-{
-        if (color) attrset(COLOR_PAIR(1));
-	move(BOTTOM, 0);
-	clrtoeol();
-	addnstr(infos[which], COLS);
-	refresh();
-}
-
-/*
- * print info about cursor position (in the upper right corner)
- */
-void lst()
-{	
-	int y,x;
-	getyx(mainw,y,x);
-	attrset(A_NORMAL);
-	mvprintw(0,COLS-7,"%d user ",cursor_line + fline + 1);
-	refresh();
-	wmove(mainw,y,x);
-}
+char *help_line[] = 
+	{
+	"\001enter - proc tree, i - init tree, t - idle/cmd, x - refresh, q - quit",
+	"\001enter - users list, i - init, o - owner on/off, ^I - send INT, ^K - send KILL",
+	"\001enter - users list, o - owner on/off, ^I - send INT, ^K - send KILL",
+	};
 
 void curses_init()
 {
-        initscr();
-        mainw = newwin(MAINW_LINES,COLS,TOP,0);
-        printf("\033[?25l");			/* disable cursor */
-	start_color();
-        if (COLS < 80 || LINES < 10){
-                 fprintf(stderr,"Terminal too small. I expect min. 80 columns and 10 lines.\n");  
-		 sleep(2);
-		 endprg();
-                 exit(0);
-        }
-	if ((has_colors() == TRUE && can_change_color() == TRUE) ||
-		force_color){
- 	       	color = 1;
-	        init_pair(1,COLOR_CYAN,COLOR_BLACK);/*  header info */
-        	init_pair(2,COLOR_RED,COLOR_BLACK); /*  running process */
-		init_pair(3,COLOR_MAGENTA,COLOR_BLACK);/* zombie */
-		init_pair(4,COLOR_GREEN,COLOR_BLACK);/* tree */
-		init_pair(5,COLOR_YELLOW,COLOR_BLACK);/* stopped proc (D) */
-		
+	initscr();
+	users_list.rows = screen_rows - 3;
+//	users_list.cols = screen_cols - 1;	
+	users_list.cols = COLS - 2; 	
+	proc_win.rows = users_list.rows;
+	info_win.cols = help_win.cols = proc_win.cols = users_list.cols;
+	
+	users_list.descriptor = newwin(users_list.rows , COLS, 2 ,0);
+	proc_win.descriptor = users_list.descriptor;
 
-        }
-#ifdef NOCOLORS
-        color = 0;
-#endif
-        cbreak();
-        nodelay(stdscr,TRUE);
-	scrollok(mainw,TRUE);
-        noecho();
-	help_line(MAIN_INFO);
-/*
-	move(TOP-1,0);
-
-	hline('.' | A_BOLD,COLS);
-	if (BOTTOM < LINES){
-		move(BOTTOM,0);
-		hline('.' | A_BOLD,COLS);
+	help_win.descriptor = newwin(1, COLS, users_list.rows + 2, 0);
+	info_win.descriptor = newwin(2, COLS, 0, 0);
+	if (!info_win.descriptor || !help_win.descriptor || 
+		!users_list.descriptor || !proc_win.descriptor){
+		endwin();
+		fprintf(stderr, "Ncurses library cannot create window\n");
+		exit(0);
 	}
-*/
-}
 
-void update_line_nr(int line)
-{
-        struct user *tmp;
+	wattrset(users_list.descriptor, A_BOLD);
+        printf("\033[?25l");                    /* disable cursor */
+        start_color();
+	init_pair(1,COLOR_CYAN,COLOR_BLACK);
+        init_pair(2,COLOR_GREEN,COLOR_BLACK);
+        init_pair(3,COLOR_WHITE,COLOR_BLACK);
+	init_pair(4,COLOR_MAGENTA,COLOR_BLACK);
+	init_pair(5,COLOR_RED,COLOR_BLACK);
+	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
+	init_pair(7,COLOR_BLUE,COLOR_BLACK);
         
-	for (tmp = begin; tmp; tmp = tmp->next)
-		if (tmp->line > line) tmp->line--;
+	cbreak();
+        nodelay(stdscr,TRUE);
+        scrollok(users_list.descriptor,TRUE);
+        noecho();
+}				
 
-}
-
-/* 
- * check if line is on the visible screen 
- */		
-int in_scr(int line)
+void curses_end()
 {
-	return !(line < fline || line - fline > MAINW_LINES - 1);
+	werase(help_win.descriptor);
+	wrefresh(help_win.descriptor);
+	endwin();
+        printf("\033[?25h");            /* enable cursor */
 }
 
-void update_info()
+void cursor_on(struct window *w, int line)
+{
+	mvwchgat(w->descriptor, line, 0, -1, CURSOR_COLOR, 0, 0);
+	touchline(w->descriptor, line, 1);
+	wnoutrefresh(w->descriptor);
+	doupdate();
+}
+
+void cursor_off(struct window *w, int line)
+{
+	mvwchgat(w->descriptor, line, 0, -1, NORMAL_COLOR, 0, 0);
+	touchline(w->descriptor, line, 1);
+	wnoutrefresh(w->descriptor);
+	doupdate();
+}
+
+void move_cursor(struct window *w, int from, int to)
+{
+	cursor_off(w, from);
+	cursor_on(w, to);
+}
+
+/*
+ * parse string and print line with colors
+ */
+int echo_line(struct window *w, char *s, int line)
+{
+	char *p = s, *q = s;
+	int i = 0;
+	if (!p) return 1;
+	wmove(w->descriptor, line, 0);
+	wclrtoeol(w->descriptor);
+	while(*p){
+		if (i > w->cols) break;
+		if (*p < 17){
+			i--;
+			waddnstr(w->descriptor, q, p - q);
+			wattrset(w->descriptor, COLOR_PAIR(*p));
+			q = p + 1;
+		}
+		p++;
+		i++;
+	}
+	waddnstr(w->descriptor, q, p - q);
+	return 0;
+}	
+
+void print_help(int state)
+{
+	echo_line(&help_win, help_line[state], 0);
+	wrefresh(help_win.descriptor);
+}
+
+void print_info()
 {
         char buf[128];
-        if (color) attrset(COLOR_PAIR(1));
-        sprintf(buf,"%d users: (%d local , %d telnet , %d ssh , %d other)  ",
-        	how_many, local_users, telnet_users, ssh_users, 
-		how_many - telnet_users - ssh_users - local_users);
-	
-	move(0,0);
-        addstr(buf);
-	
-        attrset(A_BOLD);
-        refresh();
-}
-
-void print_user(struct user *pentry)
+        sprintf(buf,"\x1%d users: (%d local , %d telnet , %d ssh , %d other)  ",
+                how_many, local_users, telnet_users, ssh_users,
+        how_many - telnet_users - ssh_users - local_users);
+	echo_line(&info_win, buf, 0);
+	wrefresh(info_win.descriptor);					
+}										
+											
+/*
+ * If virtual is not 0 then update window parameters but don't display
+ */	
+int print_line(struct window *w, char *s, int line, int virtual)
 {
-	char buff[256];
-	int ppid;
-	char *count;
-	lst();
-	if (!in_scr(pentry->line)) return;
-	if ((ppid = get_ppid(pentry->pid)) == -1)
-		count = "can't access";
-	else 
-		count = get_name(ppid);
+	if (real_line_nr(line, w) >=  w->rows) return 0;
+	if (!virtual) echo_line(w, s, real_line_nr(line, w));
 	
-	snprintf(buff, sizeof buff, "%-14.14s %-9.9s %-6.6s %-19.19s %s",count,pentry->name,
-			pentry->tty, pentry->host,
-			toggle?count_idle(pentry->tty):get_w(pentry->pid));
-	
-	wattrset(mainw,A_BOLD);
-	wmove(mainw,pentry->line - fline,0);	
-	waddnstr(mainw,buff,COLS);
-	if (pentry->line - fline == cursor_line){
-		mvwchgat(mainw, pentry->line  - fline,0,-1,A_REVERSE,0,NULL);
-		touchline(mainw,cursor_line,1);
-	}	
-	wrefresh(mainw);
+/* printed line is at the cursor position */
+	if (real_line_nr(line, w) == w->cursor_line && !virtual)
+		cursor_on(w, w->cursor_line);
+
+	if (real_line_nr(line, w) > w->last_line) w->last_line++;
+	return 1;
 }
 
-void delete_user(struct user *p)
-{	
-	struct user *tmp;
+void delete_line(struct window *w, int line)
+{
+	char *p = 0;
+/* line is below visible screen */
+	if (real_line_nr(line, w) > w->last_line) return;
 	
-	how_many--;
-	switch(p->prot){
-		case 23: telnet_users--; break;
-		case 22: ssh_users--; break;
-		case -1: local_users--; break;
-	}
-	update_line_nr(p->line); 
-
-//	if (lines - fline <= MAINW_LINES) lline--;
-	if (lline + fline >= lines) lline--;
-	lines--;	
-/* remove user which is above of our visible screen */
-	if (p->line < fline) {		
-		fline--;
-		p->line = -1;		
-		if(cursor_line){
-			screen_up();
-			cursor_up();
-		}
-		lst();
+	if (line < w->first_line){
+		w->first_line--;
 		return;
 	}
-	else if (!in_scr(p->line)) return;
+	wmove(w->descriptor, real_line_nr(line, w), 0);
+	wdeleteln(w->descriptor);
 	
-	wmove(mainw,p->line - fline,0);
-	wdeleteln(mainw);
-	if (p->line - fline <= cursor_line) 
-		cursor_up();
-	wrefresh(mainw);
-	
-	p->line = -1;
-	for(tmp=begin; tmp; tmp=tmp->next)	
-		if (tmp->line - fline >= MAINW_LINES - 1){
-			print_user(tmp);
-			break;
+/* if there is a line below visible screen display it */
+	if (w->last_line){
+		if ((p = w->giveme_line(w->last_line + w->first_line + 1)))
+			echo_line(w, p, w->last_line);
+		else w->last_line--;
+	}
+			
+	if (real_line_nr(line, w) < w->cursor_line){
+		w->cursor_line--;
+		wrefresh(w->descriptor);
+		return;
+	}
+	if (real_line_nr(line, w) == w->cursor_line){
+		cursor_on(w, w->cursor_line);
+		p = w->giveme_line(line + 1);
+		if (!p && (p = w->giveme_line(line - 1))){
+			if(w->cursor_line){
+				cursor_off(w, w->cursor_line);
+				w->cursor_line--;
+			}
+			else{
+				w->first_line--;
+				echo_line(w, p, w->cursor_line);
+			}
+			cursor_on(w, w->cursor_line);
 		}
+	}
+	wrefresh(w->descriptor);
+}
+
+/*
+ * Update only window parameters - don't delete a line
+ */
+void virtual_delete_line(struct window *w, int line)
+{
+	char *p = 0;
+/* line is below visible screen */
+	if (real_line_nr(line, w) > w->last_line) return;
+	
+/* line is above visible screen */
+	if (line < w->first_line){
+		w->first_line--;
+		return;
+	}
+	
+	if (w->last_line)
+		if (!(p = w->giveme_line(w->last_line + w->first_line + 1)))
+			w->last_line--;
+			
+	if (real_line_nr(line, w) < w->cursor_line){
+		w->cursor_line--;
+		return;
+	}
+	if (real_line_nr(line, w) == w->cursor_line){
+		p = w->giveme_line(line + 1);
+		if (!p && (p = w->giveme_line(line - 1))){
+			if(w->cursor_line) w->cursor_line--;
+			else w->first_line--;
+		}
+	}
+}
+
+void cursor_down(struct window *w)
+{
+	char *buf, *p;
+	if (!w->has_cursor) return;
+	if (w->cursor_line < w->rows - 1){
+		if (w->cursor_line == w->last_line) return;
+		buf = w->giveme_line(w->cursor_line + w->first_line);
+		move_cursor(w, w->cursor_line, w->cursor_line + 1);
+		echo_line(w, buf, w->cursor_line);
+		w->cursor_line++;
+	}
+/* cursor is at the bottom, check for lines, scroll screen, and print */
+	else if ((buf = w->giveme_line(w->first_line + w->rows))){
+		cursor_off(w, w->cursor_line);
+		wscrl(w->descriptor, 1);
+		echo_line(w, buf, w->cursor_line);
+		w->first_line++; 
+		p = w->giveme_line(w->cursor_line + w->first_line - 1);
+		if (!p) return;
+		echo_line(w, p, w->cursor_line - 1);
+		wrefresh(w->descriptor);
+		cursor_on(w, w->cursor_line);
+	}
+}
+void cursor_up(struct window *w)
+{
+	char *buf, *p;
+	if (w->cursor_line){
+		buf = w->giveme_line(w->cursor_line + w->first_line);
+		move_cursor(w, w->cursor_line, w->cursor_line-1);
+		echo_line(w, buf, w->cursor_line);
+		w->cursor_line--;
+	}
+	else if (!w->cursor_line && w->first_line){
+		buf = w->giveme_line(w->first_line - 1);
+		if (!buf) return;
+		cursor_off(w, w->cursor_line);
+		wscrl(w->descriptor, -1);
+		w->first_line--;
+		echo_line(w, buf, w->cursor_line);
+		p = w->giveme_line(w->first_line + w->cursor_line + 1);
+		if (!p) return;
+		echo_line(w, p, w->cursor_line + 1);
+		cursor_on(w, w->cursor_line);
+		wrefresh(w->descriptor);
+		if (w->last_line < w->rows - 1) w->last_line++;
+	}
 	return;
-}
-
-void show_cmd_or_idle(int what)	/* if what=0 show command line */
-{
-        struct user *tmp = begin;
-
-	while(tmp){
-                if (!in_scr(tmp->line)) {
-                        tmp = tmp->next;
-                        continue;
-                }
-        	wmove(mainw,tmp->line - fline,CMD_COLUMN);
-	
-		if (tmp->line - fline == cursor_line) wattrset(mainw,A_REVERSE);
-		else wattrset(mainw,A_BOLD);
-		
-		mvwaddnstr(mainw, tmp->line - fline, CMD_COLUMN, clear_buf,
-			COLS - CMD_COLUMN);
-        	wmove(mainw, tmp->line - fline, CMD_COLUMN);	
-	        waddnstr(mainw, what?count_idle(tmp->tty):get_w(tmp->pid),
-			COLS - CMD_COLUMN);
-		
-	        tmp = tmp->next;
-        }
-        wrefresh(mainw);
-}
-																							
-void redraw()
-{
-	struct user *tmp;
-	for (tmp=begin; tmp; tmp=tmp->next)
-		print_user(tmp);
-}
-																				
-void screen_down()
-{
-	struct user *tmp = begin;
-	if (!fline) return;
-	fline--;
-	
-	wscrl(mainw,-1);
-	while(tmp){
-		if (tmp->line == fline){ 
-			if (lline < MAINW_LINES) lline++;
-			print_user(tmp);
-			break;
-		}
-		tmp = tmp->next;
-	}
-}
-
-void screen_up()
-{	
-	struct user *tmp;
-	fline++;
-	lline--;
-	wscrl(mainw,1);
-	wrefresh(mainw);
-	
-	for(tmp=begin; tmp; tmp=tmp->next)
-		if (tmp->line - fline >= MAINW_LINES - 1 ){ 
-			lline++;
-			print_user(tmp);
-			break;
-		}
-}
-
-void cursor_up()
-{
-	if (!cursor_line) screen_down();
-	else cursor_line--;
-	
-	lst();
-	if (!proctree){ 
-		mvwchgat(mainw,cursor_line+1,0,-1,A_BOLD,0,NULL);
-		mvwchgat(mainw,cursor_line,0,-1,A_REVERSE,0,NULL);
- 		touchline(mainw,cursor_line,2);
-		wnoutrefresh(mainw);
-		doupdate();
-	}
-}
-
-void cursor_down()
-{
-	if (cursor_line >= lline - 1){    	/* cursor is at the bottom */
-		if (fline + cursor_line + 1 >= lines ) 
-			return; 		/*no more users*/
-		screen_up();
-	}
-	else cursor_line++;
-	lst();
-	if (!proctree){
-		mvwchgat(mainw, cursor_line-1 ,0 , -1, A_BOLD, 0, NULL);
-		mvwchgat(mainw ,cursor_line, 0, -1, A_REVERSE,0,NULL);
-		touchline(mainw ,cursor_line-1 , 2);
-		wnoutrefresh(mainw);
-		doupdate();
-	}
-}
-
-int pid_from_cursor()
-{
-	struct user *u;
-	for (u=begin; u; u=u->next)
-		if (u->line - fline == cursor_line)
-			return u->pid;
-	return 1;	
-}
-								
-
-struct user *get_user_by_line(int line)
-{
-	struct user *u;
-	for (u=begin; u; u=u->next)
-		if (u->line - fline == line)
-			return u;
-	return 0;
 }
 

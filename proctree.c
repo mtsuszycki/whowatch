@@ -2,7 +2,7 @@
  *  Copyright (c) 1999 Jan Bobrowski
  *  email: jb@wizard.ae.krakow.pl
  *  licence: GNU LGPL
- *  version: 19990609
+ *  version: 19990810
  */
 
 #include <unistd.h>
@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <sys/ioctl.h>
-#include "whowatch.h"
 #include "proctree.h"
 
 #define PROCDIR "/proc"
@@ -72,7 +70,6 @@ static struct proc proc_init = {1,&proc_init};
 static struct proc *hash_table[HASHSIZE];
 static struct proc *main_list = 0;
 int num_proc = 1;
-int process_nr = 0;
 
 static inline int hash_fun(int n)
 {
@@ -150,6 +147,7 @@ int update_tree()
 	struct proc *p,*q;
 	struct proc *old_list;
 	int n = num_proc;
+
 	change_head(main_list,old_list,mlist);
 	main_list = 0;
 
@@ -159,8 +157,13 @@ int update_tree()
 	while( get_pinfo(&info,d) ) {
 		p = validate_proc(info.pid);
 		q = validate_proc(info.ppid);
-		if(p->parent != q)
+		if(p->parent != q){
+#ifdef USE_PT_PRIV
+			if(p->priv) del(p->priv);
+#endif
+
 			change_parent(p,q);
+		}
 	}
 	closedir(d);
 
@@ -182,14 +185,32 @@ int update_tree()
 	return n;
 }
 
+/* ---------------------- */
+
 static struct proc *ptr;
 static char *lp;
 static char *buf;
 
-struct proc* tree_start(int pid,char *b)
+struct proc* tree_start(int root, int pid, char *b)
 {
-	ptr = find_by_pid(pid);
+	char tmp[128], *s;
+	struct proc *p;
+
 	lp = buf = b;
+	ptr = find_by_pid(pid);
+	if (!ptr) return 0;
+	s = tmp;
+	for(p=ptr; p->pid!=root && p->pid!=1; p=p->parent)
+		*s++ = p->broth.nx ? '|' : ' ';
+	if(s > tmp) {
+		do {
+			*lp++ = ' ';
+			*lp++ = *--s;
+		} while(s > tmp);
+		if(lp[-1] == ' ')
+			lp[-1] = '`';
+	}
+
 	*lp = 0;
 	return ptr;
 }
@@ -216,72 +237,3 @@ struct proc* tree_next()
 	if(!ptr->broth.nx) lp[-1] = '`';
 	return ptr;
 }
-
-void maintree(int pid)
-{
-	char buf[64];
-	int n, y, x, nr = process_nr;
-	struct proc *p;
-	struct user *u;
-	struct winsize win;
-//	update_tree();
-	
-	if (ioctl(1,TIOCGWINSZ,&win) != -1){
-		n = win.ws_row - TOP - 2;
-	}
-	else
-		n = 18;
-	p = tree_start(pid,buf);
-	wmove(mainw,0,0);
-	if (pid == 1){
-		wattrset(mainw,A_BOLD);
-		wprintw(mainw,"all processes (%d)\n\n",num_proc);
-		}
-	else if ((u = get_user_by_line(cursor_line))){
-		wattrset(mainw,A_BOLD);
-		wprintw(mainw,"%-14.14s %-9.9s %-6.6s %s\n\n",
-			get_name(get_ppid(u->pid)), u->name,u->tty,
-			strlen(u->host)?u->host:"local");
-	}
-	while(p) {
-		char state = get_state(p->pid);
-
-		if (nr++ < 0){		/* skip lines - simulate scrolling */
-			p = tree_next();
-			continue;
-		}
-		wattrset(mainw,A_NORMAL);
-		wprintw(mainw,"%5d",p->pid);
-		switch(state){
-			case 'R':
-				chkcolor(COLOR_PAIR(2));
-				break;
-			case 'Z':
-				chkcolor(COLOR_PAIR(3));
-				break;
-			case 'D':
-				chkcolor(COLOR_PAIR(5));
-				break;
-			default : 
-				state = ' ';
-				break;
-		}
-		wprintw(mainw," %c ",state);
-		
-		chkcolor(COLOR_PAIR(4));
-		wprintw(mainw,"%s- ",buf);
-		chkcolor(A_NORMAL);
-		getyx(mainw, y, x);
-		waddnstr(mainw, get_cmdline(p->pid), COLS - x - 1);
-		wprintw(mainw,"\n");
-		getyx(mainw, y, x);
-		if (y >= n) break;	/* end of the screen */
-		if (!(p = tree_next()) && nr < n - 5)
-				dont_scroll = 1;		
-		else 
-			dont_scroll = 0;
-
-	}
-	wrefresh(mainw);	
-}
-

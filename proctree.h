@@ -1,4 +1,4 @@
-
+#define USE_PT_PRIV
 
 struct plist {
 	struct proc* nx;
@@ -23,7 +23,7 @@ int update_tree(void del(void*));
 int update_tree();
 #endif
 struct proc* find_by_pid(int pid);
-struct proc* tree_start(int pid,char* buf);
+struct proc* tree_start(int root,int pid,char* buf);
 struct proc* tree_next();
 
 extern int num_proc;

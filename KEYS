@@ -1,13 +1,28 @@
-KEYS:
-	cursor up,down - move cursor 
-			 (you can use it even if viewing tree)
-	enter	       - toggle between users list and processes tree
-	t - toggle between users idle time and their commands 
-	i - view all system processes (tree from init)
-	r - redraw
-	x - restart
-	q - quit
-	
-optional:
-	w -  to update list of processes (if compiled with -DNOAUTO)
+These are keys you can use to navigate in the program:
 
+------------------------------------------------------------------------------
+when viewing users list:
+	
+	cursor up,down - move cursor 
+		 enter - view selected user's processes tree
+		     t - toggle between users idle time and their command line
+		     i - view all system processes (tree from init)
+		     
+------------------------------------------------------------------------------
+when viewing processes tree:
+
+	cursor up,down - move cursor 
+		 enter - go back to users list
+		     i - view all system processes (tree from init)
+		     o - display owner of each process
+	     Control I - send INT signal to selected process
+	     Control K - send KILL signal to selected process
+
+------------------------------------------------------------------------------
+    	
+x - refresh, force to read utmp file once again if for some reason
+    there is an user on display which logged out from the system.
+q - quit
+	
+You don't have to remember all of these because there is a short help line
+at the bottom of the screen.

@@ -1,46 +1,37 @@
-Whowatch 1.2
+Whowatch 1.3
 
-Whowatch is Linux ncurses who-like utility which displays informations about 
-logged in users in real time. 
-Beside standard information (login, tty, host, user's process) you can 
-see type of login (ie. ssh, telnet). Now you can also see selected user's 
-processes tree.
+Whowatch is Linux ncurses who-like utility that displays informations about 
+the users currently logged on to the machine, in real time. 
+Besides standard information (login, tty, host, user's process) you can 
+see type of login (ie. ssh, telnet). You can also see selected user's 
+processes tree or all system processes.
+In the process tree mode there is ability to send INT or KILL signal to
+selected process.
 
 Whowatch should compile on any Linux machine.
 (was tested on Slackware and few RedHat's)
 
 To compile just type 'make'.
 
-You can edit whowatch.h and change few parameters:
-- disable colors
-- change default locations of utmp and wtmp files.
-
-KEYS:
-	cursor up,down - move cursor 
-			 (you can use it even if viewing tree)
-	enter	       - toggle between users list and processes tree
-	t - show users idle time or their commands 
-	i - view all system processes (tree from init)
-	r - to redraw
-	x - to restart
-	q - quit
-	optional:
-	w -  to update list of processes (if compiled with -DNOAUTO)
-
-more to come.
-
 If you want to use whowatch you have to have read access to /proc
 , wtmp and utmp.
 
+Notes:
+- Whowatch depends on utmp and wtmp files. 
+  If some program doesn't write to wtmp file whowatch has no way to know 
+  that user logged in or logged out. There is such a problem with xterm. 
+  If you have for example four opened xterms then run whowatch, it will 
+  show you four logins as type '(xterm)'. But if you close one of these 
+  xterms whowatch still will be displaying four xterm logins. You have to 
+  press 'x' key to update data.
 
-Known bugs: 
-Whowatch depends on utmp and wtmp files. If some program doesn't write
-to wtmp file whowatch has no way to know that user logged in or logged 
-out. There is such a problem with xterm. If you have for example four
-opened xterms then run whowatch, it will show you four logins as type 
-'(xterm)'. But if you close one of these xterms whowatch still will be 
-displaying four xterm logins. You have to press 'x' key to update data.
-
+- Whowatch is not portable to other platforms mainly because of utmp/wtmp 
+  entry format.
+  AFAIK only linux utmp/wtmp entry has all information needed, ie. pid of the
+  login shell, host name for remote login and type of login.
+  If you have some ideas how to port the program to other platform please
+  drop me a note.
+  
 author: Michal Suszycki 
 	
 	mike@wizard.ae.krakow.pl	

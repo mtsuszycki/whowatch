@@ -8,39 +8,37 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 #include <curses.h>
+#include <assert.h>
 
-#define chkcolor(c) if(color) wattrset(mainw,c)
+#define CURSOR_COLOR	A_REVERSE
+#define NORMAL_COLOR	A_NORMAL
+#define CMD_COLUMN	52
 
-/*
- * COLS and LINES are filled by ncurses (initscr()) with the size
- * of the screen
- */
-#define TOP 2			/* number of lines reserved for header 	   */
-#define BOTTOM LINES-1		/* number of empty line below main window  */
-#define MAINW_LINES BOTTOM-TOP  /* number of the main window lines    	   */
-#define CMD_COLUMN 52		/* x position for printing procs or idle   */
+extern int allocated;		/* number of processes */
+extern FILE *debug_file;
+extern int show_owner;		/* if 0 don't show process owner (in tree) */
+extern int screen_rows, screen_cols;
+extern char *line_buf;
+extern int buf_size;
 
-#define MAIN_INFO	0
-#define TREE_INFO	1
+struct window
+{
+	unsigned int rows;
+	unsigned int cols;
+	int first_line;
+	int last_line;
+	int cursor_line;
+	int has_cursor;		/* not yet implemented */
+	WINDOW *descriptor;
+	char *(*giveme_line) (int line);
+};
 
-extern WINDOW *mainw;
-extern int force_color;
-extern int how_many, telnet_users, ssh_users, local_users, toggle;
-extern int color;
-extern int cursor_line;		/* current cursor's position */
-
-extern int fline;	/* shows which line (from struct user) is on the
-			   top of the main window (needed for scrolling) */
-extern int lline;
-
-extern int proctree;
-extern int process_nr;	/* how many lines to skip in a processes tree */
-extern int dont_scroll; /* don't do scrolling up processes tree any longer */
-
-extern char clear_buf[32];
-/* number of line which will be assigned to the next user */
-extern int lines;	
+extern struct window users_list;
+extern struct window proc_win;
+extern struct window help_win;
+extern struct window info_win;
 
 struct user
 {
@@ -48,41 +46,70 @@ struct user
         char *tty;
         int prot;
         int pid;
+	char parent[16];
         struct user **prev;
         struct user *next;
-	char host[UT_HOSTSIZE + 1];
+        char host[UT_HOSTSIZE + 1];
         int line;
 };
-							
-extern struct user *begin;
-struct utmp *get_utmp_user(char *tty);
-int read_key();						
+
+struct process
+{
+        struct process **prev;
+        struct process *next;
+        int line;
+	char state;
+	int uid;
+	struct proc *proc;
+};
+
+extern int tree_pid;
+extern int how_many, ssh_users, telnet_users, local_users;
+
+void allocate_error();
+
+/* process.c */
+void tree_periodic();
+void clear_list();
+char *proc_give_line(int line);
+void dump_list();
+pid_t pid_from_tree(int line);
+void maintree(int pid);
+void tree_title(struct user *p);
+void clear_tree_title();
+
+/* screen.c */								
+int print_line(struct window *w, char *s, int line, int virtual);
+int echo_line(struct window *w, char *s, int line);
+void cursor_on(struct window *w, int line);
+void cursor_off(struct window *w, int line);
+void curses_init();
+void curses_end();
+void print_help(int state);
+void print_info();
+void cursor_down(struct window *w);
+void cursor_up(struct window *w);
+void delete_line(struct window *w, int line);
+void virtual_delete_line(struct window *w, int line);
+
+char *list_giveline(int line);
+
+/* proctree.c */
+int update_tree();
+
+
+void get_rows_cols(int *, int *);
 
 /* proc.c */
-int get_ppid(int pid);
-char *get_name(int pid);
+char *get_cmdline(int);
+int get_ppid(int);
+char *get_name(int);
 char *get_w(int pid);
+void delete_tree_line(void *line);
+void get_state(struct process *p);
 char *count_idle(char *tty);
-char *get_cmdline(int pid);
-char get_state(int pid);
 
-/* screen.c */
-void help_line(int which);
-void endprg();
-void update_info();
-void print_user();
-void delete_user(struct user *p);
-void curses_init();
-void show_cmd_or_idle(int what);
-void screen_up();
-void screen_down();
-void redraw();
-void cursor_up();
-void cursor_down();
-int in_scr(int line);
-int pid_from_cursor();
-struct user *get_user_by_line(int line);
+/* owner.c */
+char *get_owner_name(int u);
 
-/* treeps.cc */
-void maintree();
-int update_tree();
+

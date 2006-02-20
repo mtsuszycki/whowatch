@@ -15,6 +15,7 @@
 #include <assert.h>
 #include "list.h"
 #include "kbd.h"
+#include "var.h"
 
 #define CURSOR_COLOR	A_REVERSE
 #define NORMAL_COLOR	A_NORMAL
@@ -29,13 +30,38 @@
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K,                      
                 CTRL_I, PG_DOWN, PG_UP, HOME, END, BACKSPACE, TAB };
 
-extern FILE *debug_file;
 extern int screen_rows, screen_cols;
 extern char *line_buf;
 extern int buf_size;
 extern unsigned long long ticks;
 extern WINDOW *main_win;
 extern int full_cmd;
+
+struct wdgt;
+
+struct win {
+	struct list_head wdgts;		/* list of all widgets			*/
+	struct list_head refresh;	
+	struct list_head valchg;	/* list of widgets that wants to receive *
+					 * new val from main win		 */
+	struct list_head keyh;		/* list of wgdt's that have key handlers */	
+	struct list_head periodic;
+	struct wdgt *info;
+} win;
+
+struct wdgt {
+	struct 	list_head wdgts_l;
+	struct 	list_head refresh_l;
+	struct 	list_head valchg_l;
+	struct 	list_head keyh_l;
+	struct 	list_head periodic_l;
+	void 	*scrwd;			/* screen window/pad descriptor		*/
+	char	 name[8];			
+	u32	 x, y, xsize, ysize;
+	void 	(*wrefresh)(struct wdgt *); 
+	void 	(*periodic)(struct wdgt *);
+};	
+
 
 /*
  * Data associated with window are line numbered. If scrolling
@@ -81,13 +107,24 @@ struct process
 	struct proc_t *proc;
 };
 
+void err_exit(int , char *);
+
+/* screen.c */
+void scr_doupdate(void);
+void *scr_newwin(u32 ,u32 , u32 , u32);
+void scr_wdirty(struct wdgt *);
+int scr_addfstr(struct wdgt *, char *, u32 , u32 );
+/**************/
+
+
+
 /* user.c */
 void users_init(void);
 void check_wtmp(void);
-void print_info(void);
 struct user_t *cursor_user(void);
 unsigned int user_search(int);
 void users_list_refresh();
+char *proc_ucount(void);
 
 /* whowatch.c */
 void allocate_error();
@@ -121,7 +158,6 @@ void page_down(struct window *);
 void page_up(struct window *);
 void key_home(struct window *);
 void key_end(struct window *);
-void update_load(void);
 void to_line(int, struct window *);
 
 /* proctree.c */
@@ -139,11 +175,10 @@ void delete_tree_line(void *line);
 void get_state(struct process *p);
 char *count_idle(char *tty);
 #ifndef HAVE_GETLOADAVG
-int getloadavg(double [], int);
+int proc_getloadavg(double [], int);
 #endif
 void proc_details(int);
 void sys_info(int);
-void get_boot_time(void);
 
 /* owner.c */
 char *get_owner_name(int u);

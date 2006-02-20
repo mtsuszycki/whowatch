@@ -75,7 +75,7 @@ static void synchronize(void)
 		memset(z, 0, sizeof *z);
 		check_line(l);
 		z->line = l++;
-		(struct process *) p->priv = z;
+		p->priv = z;
 		z->proc = p;
 		if (*current){
 			z->next = *current;
@@ -193,19 +193,19 @@ unsigned int getprocbyname(int l)
 static void dump_list(void )
 {
 	struct process *p = begin;
-	fprintf(debug_file,"\nbegin %p\n", begin);
+	DBG("\nbegin %p\n", begin);
 	while(p){
-		fprintf(debug_file, "%p next %p, line %d, pid %d %s\n",p,p->next,
+		DBG("%p next %p, line %d, pid %d %s\n",p,p->next,
 			p->line,p->proc->pid, get_cmdline(p->proc->pid));
 		p = p->next;
 	}
-	fflush(debug_file);
 }
 #endif
 
 void tree_title(struct user_t *u)
 {
 	char buf[64];
+return;	
 	if(!u) snprintf(buf, sizeof buf, "%d processes", proc_win.d_lines);
 	else snprintf(buf, sizeof buf, "%-14.14s %-9.9s %-6.6s %s",
                 	u->parent, u->name, u->tty, u->host);
@@ -275,7 +275,7 @@ static int signal_keys(int key)
 
 	if(!(key&KBD_CTRL)) return KEY_SKIPPED;
 	key &= KBD_MASK;
-dolog(__FUNCTION__": %x %x\n", key, 'H');	
+//dolog(__FUNCTION__": %x %x\n", key, 'H');	
 
 	switch(key) {
 	case 'K': signal = 9; break;
@@ -321,3 +321,4 @@ void procwin_init(void)
 	proc_win.periodic = tree_periodic;
 	proc_win.redraw = draw_tree;
 }
+

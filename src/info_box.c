@@ -1,4 +1,4 @@
-/*
+ /*
  * Creates simple sub window that displays some message.
  * There is only one button available ("Cancel"). Default
  * action for any key is to destroy the sub window.
@@ -66,7 +66,7 @@ static void box_create(void)
 	if(_box.wd) return;
 	set_size();
 	_box.wd = newpad(_box.rows, _box.cols);
-	if(!_box.wd) prg_exit(__FUNCTION__": cannot allocate memory.");
+//if(!_box.wd) prg_exit(__FUNCTION__": cannot allocate memory.");
 	wbkgd(_box.wd, COLOR_PAIR(9));
 	werase(_box.wd);
 	box(_box.wd, ACS_VLINE, ACS_HLINE);

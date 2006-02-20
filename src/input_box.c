@@ -127,7 +127,7 @@ static int box_create(void)
 
 void clb(char *s)
 {
-	dolog(__FUNCTION__": in: %s\n", s);
+//	dolog(__FUNCTION__": in: %s\n", s);
 }
 
 /* 

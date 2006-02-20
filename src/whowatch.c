@@ -3,18 +3,72 @@
 #include "whowatch.h"
 #include "config.h"
 
-#ifdef DEBUG
-FILE *debug_file;
-#endif
-
 #define TIMEOUT 	3
+
+/****** new ******/
+/*
+ * Main window structure that holds all widgets and widgets' lists.
+ */
+static struct win *mwin = &win;
+
+#define ADD_WDGTS(w) 		list_add(&w->wdgts_l, &mwin->wdgts)
+#define ADD_PERIODIC(w) 	list_add(&w->periodic_l, &mwin->periodic)
+#define ADD_REFRESH(w) 		list_add(&w->refresh_l, &mwin->refresh)
+
+static void mwin_init(void)
+{
+	DBG("Initializing main window structure");
+	INIT_LIST_HEAD(&mwin->wdgts);
+	INIT_LIST_HEAD(&mwin->refresh);
+	INIT_LIST_HEAD(&mwin->valchg);
+	INIT_LIST_HEAD(&mwin->periodic);
+}
+
+/*
+ * Refresh all widgets in reverse order, from top to bottom.
+ */
+static void mwin_refresh(void)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	
+	list_for_each_r(l, &mwin->refresh) {
+		w = list_entry(l, struct wdgt, refresh_l);
+		if(w->wrefresh) w->wrefresh(w);	
+		DBG("Refreshing widget '%s' [%d, %d]", w->name, w->xsize, w->ysize);
+		scr_wdirty(w);
+	}	
+	scr_doupdate();
+}
+
+
+static void mwin_periodic(void)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	
+	list_for_each_r(l, &mwin->periodic) {
+		w = list_entry(l, struct wdgt, periodic_l);
+		if(w->periodic) w->periodic(w);	
+	}	
+}
+
+/*
+ * Handle exit differently if screen is in ncurses mode (scr == 1)
+ */
+void err_exit(int scr, char *s)
+{
+	errx(1, "%s", s);
+}
+
+/************/
+
 
 unsigned long long ticks;	/* increased every TIMEOUT seconds	*/
 struct window users_list, proc_win;
 struct window *current;
 int size_changed; 
 int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
-int signal_sent;
 int screen_rows;	/* screen rows returned by ioctl  		*/
 int screen_cols;	/* screen cols returned by ioctl		*/
 char *line_buf;		/* global buffer for line printing		*/
@@ -50,7 +104,6 @@ static int (*key_funct[])(int) = {
 	sub_keys,
 };
 	
-
 #ifdef HAVE_LIBKVM
 int kvm_init();
 int can_use_kvm = 0;
@@ -69,25 +122,35 @@ void allocate_error(){
 	exit (1);
 }
  
-void update_load();
-
 /*
  * Process these function after each TIMEOUT (default 3 seconds).
  * Order is important because some windows are on the top
  * of others.
  */
-static void periodic(void)
+static void main_periodic(void)
 {
+	mwin_periodic();
+	mwin_refresh();
 	check_wtmp();
-	update_load();		
+//update_load();		
 	current->periodic();
 	wnoutrefresh(main_win);
-	wnoutrefresh(info_win.wd);
+//wnoutrefresh(info_win.wd);
 	sub_periodic();
-menu_refresh();
-box_refresh();
-info_refresh();
-	doupdate();
+	menu_refresh();
+	box_refresh();
+	info_refresh();
+}
+
+/*
+ * Set signal_sent flag or return it if arg == -1
+ */
+static int signal_sent(int i)
+{
+	static int signal_sent;
+	
+	if(i == -1) return signal_sent;
+	return signal_sent = i;
 }
 
 void send_signal(int sig, pid_t pid)
@@ -97,7 +160,7 @@ void send_signal(int sig, pid_t pid)
 	/*  Protect init process */
 	if(pid == INIT_PID) p = -1;
 	else p = kill(pid, sig);
-	signal_sent = 1;
+	signal_sent(1);
 	if(p == -1)
 		sprintf(buf,"Can't send signal %d to process %d",
 			sig, pid); 
@@ -113,9 +176,9 @@ void help(void);
 static void key_action(int key)
 {
 	int i, size;
-	if(signal_sent) {
+	if(signal_sent(-1)) {
 	    print_help();
-	    signal_sent = 0;
+	    signal_sent(0);
 	}
 	/* 
 	 * First, try to process the key by object (subwindow, menu) that
@@ -152,9 +215,8 @@ static void key_action(int key)
 	default: return;
 	}
 SKIP:
-dolog(__FUNCTION__": doing refresh\n");
 	wnoutrefresh(main_win);
-	wnoutrefresh(info_win.wd);
+//wnoutrefresh(info_win.wd);
 	pad_refresh();
 	menu_refresh();
 	box_refresh();
@@ -162,7 +224,7 @@ dolog(__FUNCTION__": doing refresh\n");
 	doupdate();
 }
 
-static void get_rows_cols(int *y, int *x)
+static void get_scrsize(int *y, int *x)
 {
 	struct winsize win;
 	if (ioctl(1,TIOCGWINSZ,&win) != -1){
@@ -170,7 +232,8 @@ static void get_rows_cols(int *y, int *x)
 		*x = win.ws_col;
 		return;
 	}
-	prg_exit(__FUNCTION__ ": ioctl error: cannot read screen size.");
+exit(0);
+//	prg_exit(__FUNCTION__ ": ioctl error: cannot read screen size.");
 }								
 
 static void winch_handler()
@@ -184,7 +247,7 @@ static void winch_handler()
  */
 static void resize(void)
 {
-	get_rows_cols(&screen_rows, &screen_cols);
+	get_scrsize(&screen_rows, &screen_cols);
 	resizeterm(screen_rows, screen_cols);
 	wresize(main_win, screen_rows-3, screen_cols);
 	win_init();
@@ -199,8 +262,8 @@ static void resize(void)
 	wnoutrefresh(main_win);                                             
 	print_help();
 	pad_resize();
-	print_info();
-	update_load();
+//	print_info();
+//update_load();
 	menu_resize();
 	box_resize();
 	info_resize();
@@ -208,11 +271,153 @@ static void resize(void)
 	size_changed = 0;
 }
 
-static void int_handler()
+static void int_handler(int i)
 {
 	curses_end();
 	exit(0);
 }		
+
+static void set_sig(void)
+{
+	signal(SIGINT, int_handler);
+	signal(SIGWINCH, winch_handler);  
+//	signal(SIGSEGV, segv_handler);
+}
+
+static void buf_alloc(int s)
+{
+	buf_size = s;
+	line_buf = malloc(buf_size);
+	if (!line_buf) err_exit(1, "Cannot allocate memory for buffer.");
+}	
+/****************************************************/
+
+static void wdgt_init(struct wdgt *w)
+{
+	INIT_LIST_HEAD(&w->refresh_l);
+	INIT_LIST_HEAD(&w->valchg_l);
+	INIT_LIST_HEAD(&w->keyh_l);
+	INIT_LIST_HEAD(&w->periodic_l);
+}
+
+static inline struct wdgt *wdgt_alloc(void)
+{
+	return calloc(1, sizeof(struct wdgt));
+}
+
+/*
+ * Create new widget of given size
+ */
+static struct wdgt *wdgt_new(u32 x, u32 y, u32 xsize, u32 ysize, char *name)
+{
+	struct wdgt *w;
+	if(!(w = wdgt_alloc())) err_exit(1, "Cannot allocate memory for a new widget");
+	DBG("Allocated new widget %p, %d bytes, %d, %d, %d, %d", w, sizeof *w, x, y, xsize, ysize);
+	wdgt_init(w);
+	memcpy(w->name, name, sizeof w->name - 1);
+	w->x = x;
+	w->y = y;
+	w->xsize = xsize;
+	w->ysize = ysize;
+	w->scrwd = scr_newwin(x, y, xsize, ysize);
+	if(!w->scrwd) {
+		DBG("Cannot create widget");
+		free(w);
+		return 0;
+	}
+	return w;
+}
+
+static char *get_load()
+{
+        double d[3] = { 0, 0, 0};
+        static char buf[32];
+	
+        if(proc_getloadavg(d, 3) == -1) return "";
+        snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
+        return buf;
+}
+
+static void info_periodic(struct wdgt *w)
+{
+	char *s;
+	s = get_load();
+	
+	DBG("Periodic for widget '%s'", w->name);
+	scr_addfstr(w, proc_ucount(), 0, 0);
+	scr_addstr(w, s, screen_cols-strlen(s), 0);
+}
+
+static void info_wdgt(u32 x, u32 y, u32 xsize, u32 ysize)
+{
+	struct wdgt *w;
+	w = wdgt_new(x, y, xsize, ysize, "info");
+	ADD_WDGTS(w);
+	ADD_REFRESH(w);
+	ADD_PERIODIC(w);
+	w->periodic = info_periodic;
+}
+
+static void uplist_periodic(struct wdgt *w)
+{
+	scr_addstr(w, "dupa", 0, 0);
+}
+static void uplist_wdgt(u32 x, u32 y, u32 xsize, u32 ysize)
+{
+	struct wdgt *w;
+	w = wdgt_new(x, y, xsize, ysize, "uplist");
+	ADD_WDGTS(w);
+	ADD_REFRESH(w);
+	ADD_PERIODIC(w);
+//	w->periodic = uplist_periodic;
+}
+
+/*
+ * Create widgets
+ */
+static void wdgts_create(int sx, int sy)
+{
+	info_wdgt(0, 0, sx, 2);	
+	uplist_wdgt(0, 2, sx, sy-3);
+}
+
+static void scrlib_init(void)
+{
+	curses_init();
+}
+
+static void main_init(void)
+{
+	get_scrsize(&screen_rows, &screen_cols);
+	buf_alloc(screen_cols + screen_cols/2);
+
+	mwin_init();
+
+	/* initialize screen library */	
+	scrlib_init();
+
+	/* create all widgets */
+	wdgts_create(screen_cols, screen_rows);
+	
+	current = &users_list;
+	users_init();
+        procwin_init();
+	subwin_init();
+	menu_init();
+	set_sig();
+}
+
+static void main_start(void)
+{
+	mwin_periodic();
+	mwin_refresh();
+
+	print_help();
+	current->redraw();
+	wnoutrefresh(current->wd);
+	wnoutrefresh(help_win.wd);
+	doupdate();
+}	
 
 int main(int argc, char **argv)
 {
@@ -226,41 +431,12 @@ int main(int argc, char **argv)
 #ifdef HAVE_LIBKVM
 	if (kvm_init()) can_use_kvm = 1;
 #endif
-	
-#ifdef DEBUG
-	if (!(debug_file = fopen("debug", "w"))){
-		printf("file debug open error\n");
-		exit(0);
-	}
-#endif
-	get_boot_time();
-	get_rows_cols(&screen_rows, &screen_cols);
-	buf_size = screen_cols + screen_cols/2;
-	line_buf = malloc(buf_size);
-	if (!line_buf)
-		errx(1, "Cannot allocate memory for buffer.");
-
-	curses_init();
-	current = &users_list;
-	users_init();
-        procwin_init();
-	subwin_init();
-	menu_init();
-	signal(SIGINT, int_handler);
-	signal(SIGWINCH, winch_handler);  
-//	signal(SIGSEGV, segv_handler);
-
-	print_help();
-	update_load();
-	current->redraw();
-	wnoutrefresh(main_win);
-	wnoutrefresh(info_win.wd);
-	wnoutrefresh(help_win.wd);
-	doupdate();
+	main_init();
+	main_start();
 		
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
-	for(;;) {				/* main loop */
+	for(;;) {				
 		int key;
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);
@@ -276,7 +452,7 @@ int main(int argc, char **argv)
 		}
 		if (!tv.tv_sec && !tv.tv_usec){
 			ticks++;
-			periodic();
+			main_periodic();
 			tv.tv_sec = TIMEOUT;
 		}
 #else
@@ -292,10 +468,9 @@ int main(int argc, char **argv)
 			ticks++;
 			periodic();
 			tv.tv_sec = TIMEOUT;
-
 		}
 #endif
 		if(size_changed) resize();
-
 	}
 }
+

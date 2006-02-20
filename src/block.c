@@ -9,18 +9,18 @@
 #define NOT_USED	0
 #define TBL_SIZE	(sizeof(unsigned int)*8)
 
-static FILE *logfile;
 static int nr_blocks;
 
 void dolog(const char *t, ...)
 {
         va_list ap;
+	static FILE *logfile;
         char *c;
-        time_t tm = time(0);
-return;	
+        
+	time_t tm = time(0);
 	if(!logfile) {
 		logfile = fopen("/var/log/whowatch.log", "a");
-		if(!logfile) exit(1);
+		if(!logfile) return;
 		fprintf(logfile, " #############\n");
 	}
         c = ctime(&tm);
@@ -29,6 +29,7 @@ return;
         va_start(ap, t);
         vfprintf(logfile, t, ap);
         va_end(ap);
+	fprintf(logfile, "\n");
         fflush(logfile);
 }
 
@@ -42,10 +43,12 @@ static struct _block_tbl_t *new_block(int size, struct list_head *h)
 {
 	struct _block_tbl_t *tmp;
 	tmp = calloc(1, sizeof *tmp);
-	if(!tmp) prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
+	if(!tmp) exit(0);
+//prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
 	tmp->_block_t = calloc(1, size * TBL_SIZE);
-dolog(__FUNCTION__ ":new block(%d) - alloc size = %d\n", nr_blocks, size * TBL_SIZE);
-	if(!tmp->_block_t) prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
+//dolog(__FUNCTION__ ":new block(%d) - alloc size = %d\n", nr_blocks, size * TBL_SIZE);
+	if(!tmp->_block_t) exit(0);
+//prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
 	list_add(&tmp->head, h);
 	return tmp;
 }
@@ -68,11 +71,11 @@ int nr = 0;
 		}
 nr++;
 	}
-	dolog(__FUNCTION__": no empty space, getting new one.\n");
+//	dolog(__FUNCTION__": no empty space, getting new one.\n");
 	tmp = new_block(size, h);
 	i = 0;
 FOUND:
-	dolog(__FUNCTION__": empty in %d block at %d pos\n", nr, i);
+//	dolog(__FUNCTION__": empty in %d block at %d pos\n", nr, i);
 	tmp->map |= 1<<i;
 	return tmp->_block_t + (size * i);
 }
@@ -85,12 +88,12 @@ static void rm_free_blocks(struct list_head *head)
 	struct _block_tbl_t *tmp;
 	struct list_head *t, *p;
 	t = head->next;
-dolog(__FUNCTION__": entering\n");
+//dolog(__FUNCTION__": entering\n");
 	while(t != head) {
 		tmp = list_entry(t, struct _block_tbl_t, head);
 		p = t->next;
 		if(!tmp->map) {
-			dolog(__FUNCTION__": empty block found %p\n", tmp);
+			//dolog(__FUNCTION__": empty block found %p\n", tmp);
 			free(tmp->_block_t);
 			list_del(&tmp->head);
 			free(tmp);
@@ -113,13 +116,13 @@ int i = 0;
 			goto FOUND;
 		i++;
 	}
-	dolog(__FUNCTION__ ":entry not found - error\n");
+	//dolog(__FUNCTION__ ":entry not found - error\n");
 	return -1;
 FOUND:
-	dolog(__FUNCTION__": %p pointer found in %d\n", p, i);
+	//dolog(__FUNCTION__": %p pointer found in %d\n", p, i);
 	tmp->map &= ~(1<<(p - tmp->_block_t)/size);
-	dolog(__FUNCTION__": setting map pos %d to zero, map = %x\n",
-		(p - tmp->_block_t)/size, tmp->map);
+	//dolog(__FUNCTION__": setting map pos %d to zero, map = %x\n",
+//		(p - tmp->_block_t)/size, tmp->map);
 	return 0;
 }		 	
 

@@ -40,7 +40,6 @@ static void read_link(int pid, char *name)
 	println(v);
 }
 
-static int used;
 struct netconn_t {
 	struct list_head n_list;
 	struct list_head n_hash;
@@ -97,7 +96,7 @@ static void hash_init(struct list_head *hash)
 
 static inline void add_to_hash(struct netconn_t *c, int inode)
 {
-//dolog(__FUNCTION__ ": inode %d, %s\n",inode, ip_addr(c));
+////dolog(__FUNCTION__ ": inode %d, %s\n",inode, ip_addr(c));
 	list_add(&c->n_hash, tcp_hashtable + hash(inode));
 }		
 
@@ -106,15 +105,15 @@ static struct netconn_t *tcp_find(unsigned int inode, struct list_head *head)
 	struct list_head *h, *tmp;
 	struct netconn_t *t;
 	tmp  = head + hash(inode);
-//dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
+////dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
 	list_for_each(h, tmp) {
 		t = list_entry(h, struct netconn_t, n_hash);
 		if(inode == t->inode) {
-//dolog(__FUNCTION__ ": found [%d]\n", t->inode);		
+////dolog(__FUNCTION__ ": found [%d]\n", t->inode);		
 			return t;
 }			
 	}
-//dolog(__FUNCTION__ ": [%d] not found\n", inode);	
+////dolog(__FUNCTION__ ": [%d] not found\n", inode);	
 	return 0;
 }
 
@@ -128,7 +127,7 @@ static struct netconn_t *new_netconn(unsigned int inode, struct netconn_t *src)
 	t->inode = inode;
 	add_to_hash(t, inode);
 	list_add(&t->n_list, &tcp_l);
-dolog(__FUNCTION__": new conn [%d]\n", inode);	
+//dolog(__FUNCTION__": new conn [%d]\n", inode);	
 	return t;
 }
 
@@ -140,22 +139,22 @@ bzero(&t, sizeof(t));
 	i = sscanf(s, "%x:%x %x:%x %x", &t.s_addr, &t.s_port, 
 			&t.d_addr, &t.d_port, &t.state);
 	if(i != 5) return 0;
-//dolog(__FUNCTION__": entering\n");	
+////dolog(__FUNCTION__": entering\n");	
 	tmp = tcp_find(inode, tcp_hashtable);
 	if(!tmp) {
-//dolog(__FUNCTION__ ": %d %d %d not found\n", inode, t.s_port, t.d_port);
+////dolog(__FUNCTION__ ": %d %d %d not found\n", inode, t.s_port, t.d_port);
 
 		tmp =  new_netconn(inode, &t);		
 		return tmp;
 	}	
 //	t.used = tmp->used = 0;
 	if(!memcmp((char*)&t + offset,(char*)tmp + offset, sizeof(t) - offset)) {
-dolog(__FUNCTION__ ": %d %d %d %s found, not changed\n", 
-inode, t.s_port, t.d_port, tcp_state[t.state-1]);	
+//dolog(__FUNCTION__ ": %d %d %d %s found, not changed\n", 
+//inode, t.s_port, t.d_port, tcp_state[t.state-1]);	
 		return tmp; 
 	}
-dolog(__FUNCTION__ ":  %d %d->%d %d->%d found,changed\n", 
-  inode, t.s_port, t.d_port, tmp->s_port, tmp->d_port);	
+//dolog(__FUNCTION__ ":  %d %d->%d %d->%d found,changed\n", 
+ // inode, t.s_port, t.d_port, tmp->s_port, tmp->d_port);	
 
 
 memcpy((char*)&t + offset, (char*)tmp + offset, sizeof(t) - offset);
@@ -184,7 +183,7 @@ static void read_tcp_conn(void)
 		hash_init(tcp_hashtable); 
 		flag = 1;
 	}	
-//dolog(__FUNCTION__ ": reading tcp connections\n");
+////dolog(__FUNCTION__ ": reading tcp connections\n");
 	if(!(f = fopen("/proc/net/tcp", "r"))) return;
 	/* skip titles */
 	fgets(buf, sizeof buf, f);
@@ -198,7 +197,7 @@ static void read_tcp_conn(void)
 		validate(inode, tmp);
 	}
 	fclose(f);
-//dolog(__FUNCTION__ ": done.\n");	
+////dolog(__FUNCTION__ ": done.\n");	
 	return;
 }
 
@@ -225,13 +224,13 @@ static int show_net_conn(char *s)
 	struct netconn_t *t;
 	unsigned int inode = 0;	
 	if(sscanf(s, "%d", &inode) != 1) return 1;
-//dolog(__FUNCTION__ ": looking for [%d]\n", inode);	
+////dolog(__FUNCTION__ ": looking for [%d]\n", inode);	
 	t = tcp_find(inode, tcp_hashtable);
 	if(!t) {
-//dolog(__FUNCTION__ ": %d not found\n", inode);	
+////dolog(__FUNCTION__ ": %d not found\n", inode);	
 		return 0;
 	}
-//dolog(__FUNCTION__ ": %d found, printing\n", inode);		
+////dolog(__FUNCTION__ ": %d found, printing\n", inode);		
 	print_net_conn(t);
 	return 1;
 }
@@ -241,7 +240,7 @@ static void del_conn(void)
 {
 	struct list_head *h;
 	struct netconn_t *t;
-//dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
+////dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
 	list_for_each(h, &tcp_l) {
 		t = list_entry(h, struct netconn_t, n_list);
 		if(t->valid	
@@ -269,7 +268,7 @@ void open_fds(int pid, char *name)
 	}
 	if(!count || ticks - count >= 2) {
 //write(1, "\a", 1);	
-//dolog(__FUNCTION__ " reading tcp conn %d %d\n", ticks, ticks%2);	
+////dolog(__FUNCTION__ " reading tcp conn %d %d\n", ticks, ticks%2);	
 	read_tcp_conn();
 	count = ticks;
 
@@ -380,28 +379,22 @@ FOUND:
 	return c;
 }		
 
-static time_t boot_time;
 
-void get_boot_time(void)
+static time_t get_boot_time(void)
 {
 	char buf[32];
+	static time_t boot_time;
 	FILE *f;
-	unsigned long c;
-	int i = 0;
-	snprintf(buf, sizeof buf, "/proc/stat");
-	f = fopen(buf, "r");
-	if(!f) return;
-	while(fgets(buf, sizeof buf, f)) {
-		if(i == ' ') c++;
-		if(!strncmp(buf, "btime ", 6)) goto FOUND;
-	}
+
+	if(boot_time) return boot_time;
+	if(!(f = fopen("/proc/stat", "r"))) return boot_time;
+	while(fgets(buf, sizeof buf, f)) if(!strncmp(buf, "btime ", 6)) goto FOUND;
 	fclose(f);
-	return;
+	return boot_time;
 FOUND:
-	i = sscanf(buf+5, "%ld", &c);
 	fclose(f);
-	if(i != 1) return;
-	boot_time = (time_t) c;
+	sscanf(buf+5, "%ld", &boot_time);
+       	return boot_time;
 }		
 
 #include <asm/param.h>	// for HZ
@@ -410,12 +403,14 @@ static void proc_starttime(int pid, char *name)
 {
 	unsigned long i, sec;
 	char *s;
+	time_t btime = get_boot_time();
+	
 	i = p_start_time(pid);
-	if(i == -1 || !boot_time) {
+	if(i == -1 || !btime) {
 		no_info();
 		return;
 	}
-	sec = boot_time + i/HZ;
+	sec = btime + i/HZ;
 	s = ctime(&sec);
 	print("%s", s);
 }
@@ -453,7 +448,8 @@ void builtin_proc_draw(void *p)
 
 static inline void print_boot_time(void)
 {
-	if(boot_time) print("%s",ctime(&boot_time));
+	time_t btime = get_boot_time();
+	if(btime) print("%s",ctime(&btime));
 	else no_info();
 }
 

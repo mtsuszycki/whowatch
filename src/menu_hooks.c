@@ -9,7 +9,7 @@ static char *prev_search;
 
 void  m_exit(void)
 {
-dolog(__FUNCTION__":entering\n");
+//dolog(__FUNCTION__":entering\n");
 	prg_exit("");
 }	
 void m_details(void)
@@ -72,7 +72,7 @@ void m_idle(void)
 
 static void print_about(void *unused)
 {
-	println("Whowatch 1.6.0");
+	println("Whowatch 1.7.0");
 	println("Interactive process and users monitoring tool.");
 	println("Author: Michal Suszycki <mike@wizard.ae.krakow.pl>");
 	println("");
@@ -103,7 +103,6 @@ void m_load_plugin(void)
 
 static void search(char *s)
 {
-	/* search functions are located in search.c */
 	do_search(s);	
 }
 
@@ -123,3 +122,7 @@ void m_search(void)
 {
 	input_box(" Search ", "Pattern ", prev_search, search);
 }
+
+
+
+

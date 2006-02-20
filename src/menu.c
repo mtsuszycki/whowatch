@@ -72,14 +72,16 @@ static struct submenu_t *add_submenu(char *s)
 {
 	struct submenu_t *t;
 	static int pos = TITLE_START;
-	
+	//DBG("Adding another string");	
+	//DBG("Adding str %s %d", s, strlen(s));
 	t = calloc(1, sizeof *t);
-	if(!t) prg_exit(__FUNCTION__": cannot allocate memory.");
+	if(!t) exit(0); //prg_exit(__FUNCTION__": cannot allocate memory.");
 	t->title = s;
 	INIT_LIST_HEAD(&t->items);
 	list_add(&t->l_menu, &menu.submenus);
 	t->coord_x = pos;
 	pos += strlen(s) + TITLE_STEP;
+//	pos += 4 + TITLE_STEP;
 	return t;
 }
 
@@ -101,11 +103,11 @@ static void add_item(char *title, struct item_t *i)
 	static unsigned short longest;
 	int len = strlen(i->name);// + strlen(i->descr) + 1;
 	if(!(t = find_submenu(title))) {
-//dolog(__FUNCTION__ ": cannot find title %s\n", title);
+////dolog(__FUNCTION__ ": cannot find title %s\n", title);
 		return;
 	}
 	if(len > longest) longest = len;
-//dolog(__FUNCTION__": %d %d %d\n", longest, strlen(i->descr), t->cols);	
+////dolog(__FUNCTION__": %d %d %d\n", longest, strlen(i->descr), t->cols);	
 	if(longest + strlen(i->descr) + 3 > t->cols) 
 		t->cols = 3 + longest + strlen(i->descr);
 	if(!t->rows) t->rows = 3; /* make space for a border line */
@@ -181,7 +183,7 @@ void menu_init(void)
 	struct item_t *it;
 	
 	INIT_LIST_HEAD(&menu.submenus);
-	for(i = 0; submenus[i]; i++)
+	for(i = 0; i < sizeof(submenus)/sizeof(char*); i++)
 		add_submenu(submenus[i]);
 	for(i = 0; i < sizeof item_bind/sizeof(struct item_bind_t); i++) {
 		it = &item_bind[i].item;
@@ -193,7 +195,7 @@ static void menu_create(void)
 {
 	set_size();
 	menu.wd = newpad(1, menu.cols);
-	if(!menu.wd) prg_exit(__FUNCTION__ ": Cannot allocate memory.");
+	if(!menu.wd) exit(0); //prg_exit(__FUNCTION__ ": Cannot allocate memory.");
 	wbkgd(menu.wd, COLOR_PAIR(9));
 //	overwrite(info_win.wd, menu.wd);
 	werase(menu.wd);
@@ -210,7 +212,7 @@ static void menu_destroy()
 	item_cursor = 0;
 	cur_item = 0;
 	redrawwin(main_win);
-	redrawwin(info_win.wd);
+//redrawwin(info_win.wd);
 }
 
 static void highlight_item(struct submenu_t *t, int i)
@@ -252,8 +254,8 @@ assert(cur_submenu);
 	wnoutrefresh(menu.wd);
 //	submenu_refresh(cur_submenu);
 redrawwin(main_win);
-wnoutrefresh(info_win.wd);
-redrawwin(info_win.wd);
+//wnoutrefresh(info_win.wd);
+//redrawwin(info_win.wd);
 }	
 
 static int submenu_show(void)
@@ -276,7 +278,7 @@ int menu_keys(int key)
 		return 1;
 	}
 	if(!menu.wd) return 0;
-dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);	
+//dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);	
 	switch(key) {
 	case KBD_ESC:
 		menu_destroy();
@@ -291,7 +293,7 @@ dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);
 		if(!submenu_show()) return 1; 
 		if(change_item(cur_item->l_submenu.prev))
 			highlight_item(cur_submenu, 1);
-		dolog(__FUNCTION__": cur item %s\n", cur_item->name);
+		//dolog(__FUNCTION__": cur item %s\n", cur_item->name);
 		break;	
 	case KBD_UP:
 		if(!submenu_show()) return 1; 
@@ -308,10 +310,10 @@ dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);
 		menu_destroy();
 		break;
 	default: 
-dolog(__FUNCTION__": [%d] skipped\n", key);
+//dolog(__FUNCTION__": [%d] skipped\n", key);
 		return KEY_HANDLED;
 	}
-dolog(__FUNCTION__":[%d] accepted\n", key);
+//dolog(__FUNCTION__":[%d] accepted\n", key);
 	return KEY_HANDLED;
 }
 

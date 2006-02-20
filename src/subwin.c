@@ -67,7 +67,7 @@ assert(main_pad);
 			sub_current->offset--;
 		break;
 	case 'y':
-dolog(__FUNCTION__": sending %d signal to %d\n" ,signals[sub_current->arrow].sig, cur_pid);
+//dolog(__FUNCTION__": sending %d signal to %d\n" ,signals[sub_current->arrow].sig, cur_pid);
 		do_signal(signals[sub_current->arrow].sig, cur_pid);
 		return KEY_HANDLED;
 	default: return KEY_SKIPPED;
@@ -116,7 +116,7 @@ static void signal_list(void *p)
 	int size = sizeof signals/sizeof (struct signal_t);
 	char buf[16];
 	int i, pid = *(int *) p;
-dolog(__FUNCTION__": pid %d\n", pid);
+//dolog(__FUNCTION__": pid %d\n", pid);
 	if(pid <= 0) {
 		title("No valid pid selected");
 		return;
@@ -155,11 +155,11 @@ static void pad_create(struct subwin *w)
 {
 assert(sub_current);
 	main_pad->wd = newpad(SUBWIN_ROWS, SUBWIN_COLS);
-	if(!main_pad->wd) prg_exit(__FUNCTION__ ": cannot create details window.");
+	if(!main_pad->wd) exit(0); // prg_exit(__FUNCTION__ ": cannot create details window.");
 	set_size(main_pad);
 	w->offset = w->lines = w->xoffset = 0;
 	border_wd = newpad(BORDER_ROWS+1, BORDER_COLS+1);
-	if(!border_wd) prg_exit(__FUNCTION__ ": cannot create details window.");
+	if(!border_wd) exit(0); //prg_exit(__FUNCTION__ ": cannot create details window.");
 	wbkgd(border_wd, COLOR_PAIR(8));
 	werase(border_wd);
 	box(border_wd, ACS_VLINE, ACS_HLINE);
@@ -201,7 +201,7 @@ static void *on_cursor(void)
 	static void *p = 0;
 	static int pid;
 	if(current == &users_list)
-		(char *)p = cursor_user()->name;
+		p = cursor_user()->name;
 	else {
 		pid = cursor_pid();
 		p = &pid;
@@ -218,7 +218,7 @@ void pad_draw(void)
 {
 	void *p;
 assert(sub_current);
-dolog(__FUNCTION__":entering\n");	
+//dolog(__FUNCTION__":entering\n");	
 	if(!main_pad->wd) return;
 	werase(main_pad->wd);
 	sub_current->lines = 0; 
@@ -226,7 +226,7 @@ dolog(__FUNCTION__":entering\n");
 	if(sub_current == &sub_info) {
 		draw_plugin(0);
 //		pad_refresh();
-dolog(__FUNCTION__"; info only..skipping draw\n");
+//dolog(__FUNCTION__"; info only..skipping draw\n");
 		return;
 	}
 	p = on_cursor();
@@ -242,7 +242,7 @@ dolog(__FUNCTION__"; info only..skipping draw\n");
 		draw_plugin(p);
 	}		
 	else {
-dolog(__FUNCTION__"; only builtin draw\n");
+//dolog(__FUNCTION__"; only builtin draw\n");
 		sub_current->builtin_draw(p);
 	}	
 	/* number of data lines probably has changed - adjust offset */
@@ -316,7 +316,7 @@ AGAIN:
 		snprintf(dlerr, sizeof dlerr, "%s", dlerror());
 		return dlerr;
 	}
-dolog(__FUNCTION__" dlopen returned %x\n", h);
+//dolog(__FUNCTION__" dlopen returned %x\n", h);
 	/* 
 	 * Check if the same plugin has been loaded. 
 	 * Plugin's name could be the same but code could be different.
@@ -325,10 +325,10 @@ dolog(__FUNCTION__" dlopen returned %x\n", h);
 	 */
 	for(i = 0; i < sizeof sb/sizeof(struct subwin *); i++) {
 		if(sb[i]->handle == h) {
-dolog(__FUNCTION__": subwin %d has handle %x\n", i, sb[i]->handle); 		
+//dolog(__FUNCTION__": subwin %d has handle %x\n", i, sb[i]->handle); 		
 			dlclose(h);
 			dlclose(sb[i]->handle);
-dolog(__FUNCTION__": plugin already loaded in subwin %d, count %d\n", i, i);
+//dolog(__FUNCTION__": plugin already loaded in subwin %d, count %d\n", i, i);
 			sb[i]->handle = h = 0;
 			goto AGAIN;
 		break;
@@ -352,14 +352,14 @@ dolog(__FUNCTION__": plugin already loaded in subwin %d, count %d\n", i, i);
 	if(target->handle) {
 		int i;
 		i = dlclose(target->handle);
-dolog(__FUNCTION__": closing prev library: %d %s\n", i, dlerror());
+//dolog(__FUNCTION__": closing prev library: %d %s\n", i, dlerror());
 }
-dolog(__FUNCTION__": plugin loaded\n");	
+//dolog(__FUNCTION__": plugin loaded\n");	
 	target->handle = h;
 	target->flags = target->plugin_init(on_cursor());
 	return 0;
 ERROR:
-dolog(__FUNCTION__": plugin not loaded\n");
+//dolog(__FUNCTION__": plugin not loaded\n");
 	snprintf(dlerr, sizeof dlerr, "%s", err);
 	dlclose(h);
 	return dlerr;
@@ -398,7 +398,7 @@ void subwin_init(void)
 	sub_main.plugin_clear = dummy;
 	sub_main.plugin_cleanup = dummy;
 	main_pad = calloc(1, sizeof(struct pad_t));
-	if(!main_pad) prg_exit(__FUNCTION__": cannot allocate memory.");
+	if(!main_pad) exit(0); //prg_exit(__FUNCTION__": cannot allocate memory.");
 	sub_main.arrow = -1;
 	memcpy(&sub_proc, &sub_main, sizeof(sub_main));
 	memcpy(&sub_user, &sub_main, sizeof(sub_main));
@@ -412,7 +412,7 @@ void subwin_init(void)
 	sub_current = &sub_user;
 	/* set builtin plugins */
 	builtin_set();
-dolog(__FUNCTION__": %d %d\n", sub_main.arrow, sub_proc.arrow);
+//dolog(__FUNCTION__": %d %d\n", sub_main.arrow, sub_proc.arrow);
 	
 }
 
@@ -442,11 +442,11 @@ int sub_keys(int key)
 		}	
 	default: return KEY_SKIPPED;
 	}
-dolog(__FUNCTION__": key processed\n");	
-dolog(__FUNCTION__": cur %d, %d %d\n", sub_current->arrow, sub_main.arrow, sub_proc.arrow);
+//dolog(__FUNCTION__": key processed\n");	
+//dolog(__FUNCTION__": cur %d, %d %d\n", sub_current->arrow, sub_main.arrow, sub_proc.arrow);
 
 	sub_change(sub_current);
-dolog(__FUNCTION__": cur %d, %d %d\n", sub_current->arrow, sub_main.arrow, sub_proc.arrow);
+//dolog(__FUNCTION__": cur %d, %d %d\n", sub_current->arrow, sub_main.arrow, sub_proc.arrow);
 
 	return KEY_HANDLED;
 }
@@ -455,10 +455,10 @@ void sub_periodic(void)
 {
 	if(!main_pad->wd) return;
 	if(sub_current->flags & PERIODIC) {
-dolog(__FUNCTION__": doing plugin (and perhaps builtin) draw\n");
+//dolog(__FUNCTION__": doing plugin (and perhaps builtin) draw\n");
 		pad_draw();
 	}
-dolog(__FUNCTION__": doing refresh\n");
+//dolog(__FUNCTION__": doing refresh\n");
 	pad_refresh();
 }
 

@@ -17,7 +17,6 @@
 #endif
 
 LIST_HEAD(users_l);
-static int wtmp_fd;
 static int toggle;	/* if 0 show cmd line else show idle time 	*/
 
 char *line_buf;		/* global buffer for line printing		*/
@@ -57,7 +56,7 @@ void u_count(char *name, int p)
 	int i;
 	struct prot_t *t;
 	users_list.d_lines += p;
-dolog(__FUNCTION__": dlines %d\n", users_list.d_lines);	
+//dolog(__FUNCTION__": dlines %d\n", users_list.d_lines);	
 	for(i = 0; i < sizeof prot_tab/sizeof(struct prot_t); i++){
 		t = &prot_tab[i];
 		if(strncmp(t->s, name, strlen(t->s))) continue;
@@ -157,10 +156,8 @@ static void read_utmp(void)
 		if(!entry.ut_name[0]) continue;
 #endif
 		u = new_user(&entry);
-//		print_user(u);
 	}
 	close(fd);
-//	wnoutrefresh(users_list.wd);
 	return;
 }
 
@@ -190,17 +187,26 @@ static void del_user(struct user_t *u)
 }
 
 
-void print_info(void)
+char *proc_ucount(void)
 {
-        char buf[128];
+        static char buf[64];
+
 	int other = users_list.d_lines - prot_tab[LOCAL].nr - 
 		prot_tab[TELNET].nr - prot_tab[SSH].nr;
-werase(info_win.wd);
+//werase(info_win.wd);
         snprintf(buf, sizeof buf - 1,
                 "\x1%d users: (%d local, %d telnet, %d ssh, %d other)",
-                users_list.d_lines, prot_tab[LOCAL].nr, prot_tab[TELNET].nr, prot_tab[SSH].nr, other);
-        echo_line(&info_win, buf, 0);
-        wnoutrefresh(info_win.wd);
+   
+   		users_list.d_lines, prot_tab[LOCAL].nr, prot_tab[TELNET].nr, prot_tab[SSH].nr, other);
+	return buf;
+//        echo_line(&info_win, buf, 0);
+ //       wnoutrefresh(info_win.wd);
+}
+
+static void open_wtmp(int *wtmp_fd)
+{
+        if((*wtmp_fd = open(WTMP_FILE ,O_RDONLY)) == -1) err_exit(1, "Cannot open wtmp");
+        if(lseek(*wtmp_fd, 0, SEEK_END) == -1) err_exit(1, "Cannot seek end wtmp");
 }
 
 /*
@@ -208,16 +214,18 @@ werase(info_win.wd);
  */
 void check_wtmp(void)
 {
+	static int wtmp_fd;
 	struct user_t *u;
 	struct list_head *h;
 	struct utmp entry;
 	int i, show, changed;
 	show = changed = 0;
+	if(!wtmp_fd) open_wtmp(&wtmp_fd);	
 	if(current == &users_list) show = 1;
 	while((i = read(wtmp_fd, &entry, sizeof entry)) > 0){ 
 		if (i < sizeof entry){
 			curses_end();
-			errx(1, __FUNCTION__ ": error reading " WTMP_FILE );
+	//		errx(1, __FUNCTION__ ": error reading " WTMP_FILE );
 		}
 		/* user just logged in */
 #ifdef HAVE_USER_PROCESS
@@ -246,7 +254,7 @@ void check_wtmp(void)
 	}
 	if(!changed) return;
 	if(show) users_list_refresh();
-	print_info();
+//print_info();
 }
 
 char *users_list_giveline(int line)
@@ -297,8 +305,8 @@ static int ulist_key(int key)
 {
 	struct user_t *u = 0;
 	pid_t pid = INIT_PID;
-	
-        switch(key) {
+        
+	switch(key) {
         case KBD_ENTER:
 		u = cursor_user();
 		if(u) pid = u->pid; 
@@ -327,18 +335,11 @@ static void periodic(void)
 
 void users_init(void)
 {
-        if((wtmp_fd = open(WTMP_FILE ,O_RDONLY)) == -1)
-                errx(1, __FUNCTION__ ": cannot open " WTMP_FILE ": %s",
-                        strerror(errno));
-        if(lseek(wtmp_fd, 0, SEEK_END) == -1)
-                errx(1, __FUNCTION__  ": cannot seek in " WTMP_FILE ": %s",
-			strerror(errno));
 	users_list.giveme_line = users_list_giveline;
 	users_list.keys = ulist_key;
 	users_list.periodic = periodic;
 	users_list.redraw = users_list_refresh;
 	read_utmp();
-	print_info();
 }
 
 /* 

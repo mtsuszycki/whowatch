@@ -3,6 +3,9 @@
  * is here.
  */
 #include <err.h>
+#include <termios.h>
+#include <fcntl.h>
+
 #include "config.h"
 #include "whowatch.h"
 
@@ -34,6 +37,72 @@ static void alloc_color(void)
 
 #define RESERVED_LINES		3	/* reserved space for help info */
 					/* and general info		*/
+
+
+/* NEW *************************************************************/
+void scr_doupdate(void)
+{
+	doupdate();
+}
+
+/*
+ * Create new window and set 
+ */
+void *scr_newwin(u32 x, u32 y, u32 xsize, u32 ysize)
+{
+	WINDOW *w;
+	if(!(w = newwin(ysize, xsize, y, x))) return 0;
+	
+	wattrset(w, COLOR_PAIR(3));
+	wattrset(w, COLOR_PAIR(3));
+	wbkgd(w, COLOR_PAIR(3)); 
+	return w;
+}
+
+/*
+ * Mark window to be refreshed
+ */
+void scr_wdirty(struct wdgt *w)
+{
+	wnoutrefresh(w->scrwd);
+}
+
+void scr_addstr(struct wdgt *w, char *s, u32 x, u32 y)
+{
+	wattrset((WINDOW *)w->scrwd, COLOR_PAIR(3));
+	wmove(w->scrwd, y, x);
+	waddstr(w->scrwd, s);
+}
+
+/*
+ * Print string that contains formatting chatacters (for colors)
+ */
+int scr_addfstr(struct wdgt *w, char *s, u32 x, u32 y)
+{
+	char *p = s, *q = s;
+	int i = 0;
+	if (!p) return 1;
+	wmove(w->scrwd, y, x);
+	wclrtoeol(w->scrwd);
+	while(*p){
+	//	if (i > w->cols) break;
+		if (*p < 17){
+			i--;
+			if(p - q != 0)
+				waddnstr(w->scrwd, q, p - q);
+			wattrset((WINDOW *)w->scrwd, COLOR_PAIR(*p));
+			q = p + 1;
+		}
+		p++;
+		i++;
+	}
+	waddnstr(w->scrwd, q, p - q);
+	return 0;
+}	
+
+
+
+/**************************************************************/
 /* 
  * Initialize windows parameters and allocate space
  * for a cursor buffer.
@@ -41,13 +110,33 @@ static void alloc_color(void)
 void win_init(void)
 {
 	curs_buf = realloc(curs_buf, screen_cols * sizeof(chtype));
-	if(!curs_buf) errx(1, __FUNCTION__ ": Cannot allocate memory.");
+	if(!curs_buf) exit(0);
+	
+//errx(1, __FUNCTION__ ": Cannot allocate memory.");
 	bzero(curs_buf, sizeof(chtype) * screen_cols);
 	users_list.rows = screen_rows - RESERVED_LINES - 1;
 	users_list.cols = screen_cols - 2; 	
 	proc_win.rows = users_list.rows;
 	info_win.cols = help_win.cols = proc_win.cols = users_list.cols;
 }	
+
+struct termios tio;
+
+void term_raw()
+{
+	struct termios t;
+	tcgetattr(0, &tio);
+	t = tio;
+	t.c_lflag &= ~(ICANON|ECHO);
+	tcsetattr(0, TCSANOW, &t);
+	fcntl(0, F_SETFL, O_NONBLOCK);
+}
+
+void term_rest()
+{
+	tcsetattr(0, TCSANOW, &tio);
+}
+
 
 void curses_init()
 {
@@ -57,9 +146,8 @@ void curses_init()
 	proc_win.wd = users_list.wd;
 
 	help_win.wd = newwin(1, COLS, users_list.rows + RESERVED_LINES, 0);
-	info_win.wd = newwin(2, COLS, 0, 0);
-	if (!info_win.wd || !help_win.wd || 
-		!users_list.wd || !proc_win.wd){
+//info_win.wd = newwin(2, COLS, 0, 0);
+	if (!help_win.wd || !users_list.wd || !proc_win.wd){
 		endwin();
 		fprintf(stderr, "Ncurses library cannot create window\n");
 		exit(0);
@@ -72,10 +160,10 @@ void curses_init()
 	wattrset(proc_win.wd, COLOR_PAIR(3));       
 	wattrset(users_list.wd, COLOR_PAIR(3));       
 	wattrset(help_win.wd, COLOR_PAIR(3));       
-	wattrset(info_win.wd, COLOR_PAIR(3));
+//wattrset(info_win.wd, COLOR_PAIR(3));
 	wbkgd(users_list.wd, COLOR_PAIR(3)); 
 	wbkgd(help_win.wd, COLOR_PAIR(3)); 
-	wbkgd(info_win.wd, COLOR_PAIR(3)); 
+//wbkgd(info_win.wd, COLOR_PAIR(3)); 
 	cbreak();
 /*
         nodelay(stdscr,TRUE);
@@ -169,18 +257,6 @@ void print_help()
 	if(current == &proc_win) i = 1; 
 	echo_line(&help_win, help_line[i], 0);
 	wnoutrefresh(help_win.wd);
-}
-
-void update_load()
-{
-	double d[3] = { 0, 0, 0};
-	char buf[32];
-	if(info_win.cols < 65 || getloadavg(d, 3) == -1) return;
-	snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
-	wmove(info_win.wd, 0, screen_cols - strlen(buf));
-	wattrset(info_win.wd, COLOR_PAIR(3));
-	waddstr(info_win.wd, buf);
-	wnoutrefresh(info_win.wd);
 }
 
 int inline scr_line(int l, struct window *w)

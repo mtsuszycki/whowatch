@@ -2,7 +2,6 @@
  *  Jan Bobrowski <jb@wizard.ae.krakow.pl>
  *  version: 20000511
  */
-
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -12,7 +11,6 @@
 #include <string.h>
 #include "config.h"
 
-
 #ifdef HAVE_PROCESS_SYSCTL
 #include <sys/param.h>
 #include <sys/sysctl.h>
@@ -20,7 +18,6 @@
 #endif
 
 #include "proctree.h"
-
 #define PROCDIR "/proc"
 #define HASHSIZE 128
 
@@ -37,7 +34,6 @@
 })
 
 #define is_on_list(p,f) (!!(p)->f.ppv)
-
 #define change_head(a,b,f) ({b=a; if(a) a->f.ppv=&b;})
 
 #ifdef HAVE_PROCESS_SYSCTL

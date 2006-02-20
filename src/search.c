@@ -39,7 +39,7 @@ void do_search(char *s)
 	/* move the cursor to appropriate line */
 	to_line(p, current);
 	pad_draw();
-dolog(__FUNCTION__": %d\n", p);
+//dolog(__FUNCTION__": %d\n", p);
 }
 
 

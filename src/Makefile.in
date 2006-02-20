@@ -43,7 +43,7 @@ bin_PROGRAMS = whowatch
 whowatch_SOURCES = whowatch.c whowatch.h process.c procinfo.c proctree.c \
 block.c owner.c screen.c user.c subwin.c proctree.h procinfo.h pluglib.c \
 subwin.h menu.c input_box.c menu_hooks.c menu_hooks.h info_box.c \
-proc_plugin.c user_plugin.c kbd.c kbd.h search.c term.c help.c
+proc_plugin.c user_plugin.c kbd.c kbd.h search.c help.c
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS)
@@ -56,7 +56,7 @@ LIBS = @LIBS@
 whowatch_OBJECTS =  process.o  procinfo.o proctree.o owner.o \
 screen.o block.o user.o subwin.o pluglib.o menu.o input_box.o \
 menu_hooks.o  info_box.o proc_plugin.o user_plugin.o kbd.o \
-search.o term.o help.o whowatch.o 
+search.o help.o whowatch.o 
 whowatch_LDADD = $(LDADD)
 whowatch_DEPENDENCIES = 
 whowatch_LDFLAGS = 

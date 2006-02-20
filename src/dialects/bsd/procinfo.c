@@ -318,9 +318,9 @@ void get_state(struct process *p)
 }
 #endif
 
-#ifndef HAVE_GETLOADAVG
-int getloadavg(double d[], int l)
+int proc_getloadavg(double d[], int l)
 {
+#ifndef HAVE_GETLOADAVG
 	FILE *f;
 	if(!(f = fopen("/proc/loadavg", "r")))
 		return -1;
@@ -330,8 +330,10 @@ int getloadavg(double d[], int l)
 	}
 	fclose(f);
 	return 0;
-}
+#else
+	return getloadavg(d, l);
 #endif
+}
 /* 
  * It really shouldn't be in this file.
  * Count idle time.

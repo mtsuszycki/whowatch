@@ -1,30 +1,22 @@
-- gdy resize na dosc maly i details window zawija linijki to
-scrolling i tlo do dupy
-* gdy resize w users list to details sie przesuwa i zostawia slad
-* dorobic OK i Cancel w input_box	
-* zmienic change me oraz branie pid albo uid w subwin.c
-* dorobic builtin plugin dla userow i systemu
-- przeniesc pluginy do katalogu plugins a w srodku builtin/ i linux/ bsd/
-- big cleanup w subwin.c dla handle_arrow
-- dodac liste sygnalow
-* dodac ogolna obsluge dla ESCAPE (thanks jb)
-* w ogole poprawic read_key (thanks jb)
-- sprawdzic czy nie za duzo jest redrawwin poza main()
-- w proc_plugin zmienic parsowanie /proc/net/tcp - nie od konca
-znajdowanie inode bo w 2.4.x jest wiecej kolumn
-- poprawic w proc_plugin znajdywanie w liscie haszujacej
-- dodac tam rowniez rm_free_blocks
-* gdy jest details win i nastapi przejscie z proctree do users
- to nie sa odswiezane detale (?)
-- dorobic make install
-* po resize znika podswietlenie tytulu w menu
-* gdy da sie enter i pojawi "user logged out" to mozna ruszac kursorem. 
-- w user tree znika tree title.
-- mozna przesuwac w prawo details win, pomimo ze nie ma po co.
-- po resize nie wyswietla sie tree_title
-- nie wszystko dziala w menu (np. signal list)
-- gdy z user proc przechodzi do all tree to details nie
-  sa od razu odswiezane
-* !! w open files zle sa wyswietlane porty - ujemne liczby - overflow??
-  (nie overflow ale po prostu brak argumentu w print)
-  
+- Y-expand pad if data source has more lines than currently available
+- output only visible lines in a pad and prefetch if necessary?
+- cache for cursor_line -> pid/uid mapping?
+- call clear_list() in process.c?
+- if exti not full filled with some data then it blinks
+  if scrolling underlaying window (ulist/plist)
+- add need_redraw(w) valid for caller only, not for all wdgts
+- after resize call scr_crsr_resize to move crsr if necessary
+- clear line in ulist coz after cmd changes for something shorter you can see
+   old string
+- ulist: after login, info shows new number of users with a delay
+- ulist: if last line deleted end cursor there, then cursor is refreshed after some time
+- KBD_RIGHT: count how far text inside exti can be moved
+- KBD_ESC: add it to wdts
+- input box resize - decor box problem and cursor moving outside
+- don't refresh anything in key_action() if any key (without handler) was pressed.
+
+FUNCTIONALITY:
+- freeze process tree and mark multiple processes to kill
+- display nr of processes, zombies, working etc.
+- make search box small, maybe at the last line
+

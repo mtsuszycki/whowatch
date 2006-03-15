@@ -5,6 +5,7 @@
 #include "whowatch.h"
 #include "pluglib.h"
 
+/*
 static void general(void)
 {
 	title("GENERAL KEYS:\n"); newln();
@@ -20,7 +21,6 @@ static void general(void)
 	title("/"); println(" - search");
 	println("");
 }
-
 static void userwin_help(void)
 {
 	title("USERS LIST:\n"); newln();
@@ -53,12 +53,14 @@ static void show_help(void *unused)
 {
 //dolog(__FUNCTION__":printing help\n");
 	general();
-	if(current == &users_list) userwin_help();
-	if(current == &proc_win) procwin_help();	
-	sub_help();
+//	if(current == &users_list) userwin_help();
+	//if(current == &proc_win) procwin_help();	
+//	sub_help();
 }
 
+*/
 void help(void)
 {
-	new_sub(show_help);
+	;
+	//new_sub(show_help);
 }

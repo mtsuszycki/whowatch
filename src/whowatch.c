@@ -3,54 +3,109 @@
 #include "whowatch.h"
 #include "config.h"
 
-#define TIMEOUT 	3
+#define TIMEOUT		 	3
+/* wdgts colors - correspond to curses COLOR_PAIR(n) 	*/
+#define CLR_WHITE_BLACK		3
+#define CLR_BLACK_CYAN		8
+#define CLR_CYAN_BLACK		1
+#define CLR_RED_CYAN		7
+#define CLR_BLACK_WHITE		9
 
-/****** new ******/
-/*
- * Main window structure that holds all widgets and widgets' lists.
- */
+/* Main window that holds all widgets and manages them 	*/
+static struct win win;
 static struct win *mwin = &win;
 
-#define ADD_WDGTS(w) 		list_add(&w->wdgts_l, &mwin->wdgts)
-#define ADD_PERIODIC(w) 	list_add(&w->periodic_l, &mwin->periodic)
-#define ADD_REFRESH(w) 		list_add(&w->refresh_l, &mwin->refresh)
+#define MWADD_TO_LIST(w, N)	list_add(&w->N ## _l, &mwin->N)
+#define mwin_do_list(N, F...) 					\
+static void mwin_ ## N  (void)					\
+{								\
+	struct wdgt *w;						\
+	struct list_head *l;					\
+	list_for_each_r(l, &mwin->wdgts) {			\
+		w = list_entry(l, struct wdgt, wdgts_l);	\
+		if(!w->N) continue;				\
+		DBG("Calling " # N " for '%s'", w->name);	\
+		w->N(w);					\
+	}							\
+	F;							\
+}
+
+unsigned long long ticks;	/* increased every TIMEOUT seconds	*/
+static int size_changed; 
+int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
+	
+#ifdef HAVE_LIBKVM
+int kvm_init();
+int can_use_kvm = 0;
+#endif
+
+mwin_do_list(wrefresh, scr_doupdate());
+mwin_do_list(periodic);
+
+void mwin_redraw(int f)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	list_for_each_r(l, &mwin->wdgts) {
+		w = list_entry(l, struct wdgt, wdgts_l);
+		if(!w->redraw) continue;
+		if(!f && !(w->flags & WDGT_NEED_REDRAW)) continue;
+		DBG("REDRAWing %s, flags %d", w->name, w->flags);
+		w->flags &= ~WDGT_NEED_REDRAW;
+		w->redraw(w);
+	}
+}
+
+char *_msg[] = { "want_dsource", "want_crsr_val", "cur_crsr", "cur_hlp", "want_upid", 
+	"crsr_reg", "crsr_unreg", "snd_esource" };
+
+void *wmsg_send(struct wdgt *sndr, int type, void *data)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	void *ret = 0;	
+	DBG("Sending message %s [%d] from %s", _msg[type], type, sndr->name);
+	list_for_each_r(l, &mwin->msg) {
+		w = list_entry(l, struct wdgt, msg_l);
+		/* don't send to self */
+		if(w == sndr || !w->msgh) continue;
+		DBG("'%s' %s [%d] -> '%s'",sndr->name, _msg[type], type, w->name);
+		ret = w->msgh(w, type, sndr, data);
+		if(ret) {
+			DBG("'%s' responded for %s [%d]", w->name, _msg[type], type);
+			return ret;
+		}	
+	}
+	DBG("End of sending %d", type);
+	return ret;
+}
+
+static int mwin_keyh(int key)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	int ret = KEY_SKIPPED; 
+	list_for_each(l, &mwin->wdgts) {
+		w = list_entry(l, struct wdgt, wdgts_l);
+		if(!w->keyh) continue;
+		DBG("Calling keyh for '%s', key '%c'", w->name, key);
+		ret = w->keyh(w, key);	
+		if(ret == KEY_FINAL) return ret;
+	}
+	return ret;
+}
+
+void mwin_msg_on(struct wdgt *w)
+{
+	MWADD_TO_LIST(w, msg);
+}
 
 static void mwin_init(void)
 {
 	DBG("Initializing main window structure");
 	INIT_LIST_HEAD(&mwin->wdgts);
-	INIT_LIST_HEAD(&mwin->refresh);
-	INIT_LIST_HEAD(&mwin->valchg);
-	INIT_LIST_HEAD(&mwin->periodic);
-}
-
-/*
- * Refresh all widgets in reverse order, from top to bottom.
- */
-static void mwin_refresh(void)
-{
-	struct wdgt *w;	
-	struct list_head *l;
-	
-	list_for_each_r(l, &mwin->refresh) {
-		w = list_entry(l, struct wdgt, refresh_l);
-		if(w->wrefresh) w->wrefresh(w);	
-		DBG("Refreshing widget '%s' [%d, %d]", w->name, w->xsize, w->ysize);
-		scr_wdirty(w);
-	}	
-	scr_doupdate();
-}
-
-
-static void mwin_periodic(void)
-{
-	struct wdgt *w;	
-	struct list_head *l;
-	
-	list_for_each_r(l, &mwin->periodic) {
-		w = list_entry(l, struct wdgt, periodic_l);
-		if(w->periodic) w->periodic(w);	
-	}	
+	INIT_LIST_HEAD(&mwin->msg);
+	mwin->gbsize = sizeof(mwin->gbuf);
 }
 
 /*
@@ -60,54 +115,6 @@ void err_exit(int scr, char *s)
 {
 	errx(1, "%s", s);
 }
-
-/************/
-
-
-unsigned long long ticks;	/* increased every TIMEOUT seconds	*/
-struct window users_list, proc_win;
-struct window *current;
-int size_changed; 
-int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
-int screen_rows;	/* screen rows returned by ioctl  		*/
-int screen_cols;	/* screen cols returned by ioctl		*/
-char *line_buf;		/* global buffer for line printing		*/
-int buf_size;		/* allocated buffer size			*/
-
-//enum key { ENTER=KEY_MAX + 1, ESC, CTRL_K, CTRL_I };
-
-struct key_handler {
-	enum key c;
-	void (*handler)(struct window *);
-};
-
-/*
- * These are key bindings to handle cursor movement.
- */
-static struct key_handler key_handlers[] = {
-	{ KBD_UP, cursor_up	 	},
-	{ KBD_DOWN, cursor_down 	},
-	{ KBD_PAGE_DOWN, page_down	},
-	{ KBD_PAGE_UP, page_up		},
-	{ KBD_HOME, key_home		},
-	{ KBD_END, key_end		}
-};  
-
-/*
- * Functions for key handling. They have to be called in proper order.
- * Function associated with object that is on top has to be called first.
- */
-static int (*key_funct[])(int) = {
-	info_box_keys,
-	box_keys,
-	menu_keys,
-	sub_keys,
-};
-	
-#ifdef HAVE_LIBKVM
-int kvm_init();
-int can_use_kvm = 0;
-#endif
 
 void prg_exit(char *s)
 {
@@ -123,23 +130,13 @@ void allocate_error(){
 }
  
 /*
- * Process these function after each TIMEOUT (default 3 seconds).
- * Order is important because some windows are on the top
- * of others.
+ * Run it after each TIMEOUT (default 3 seconds).
  */
 static void main_periodic(void)
 {
 	mwin_periodic();
-	mwin_refresh();
-	check_wtmp();
-//update_load();		
-	current->periodic();
-	wnoutrefresh(main_win);
-//wnoutrefresh(info_win.wd);
-	sub_periodic();
-	menu_refresh();
-	box_refresh();
-	info_refresh();
+	mwin_redraw(1);
+	mwin_wrefresh();
 }
 
 /*
@@ -165,110 +162,76 @@ void send_signal(int sig, pid_t pid)
 		sprintf(buf,"Can't send signal %d to process %d",
 			sig, pid); 
 	else sprintf(buf,"Signal %d was sent to process %d",sig, pid);
+	/*
 	werase(help_win.wd);
 	echo_line(&help_win, buf, 0);
 	wnoutrefresh(help_win.wd);
+	*/
 }
-
-void m_search(void);
-void help(void);
 
 static void key_action(int key)
 {
-	int i, size;
-	if(signal_sent(-1)) {
-	    print_help();
-	    signal_sent(0);
-	}
-	/* 
-	 * First, try to process the key by object (subwindow, menu) that
-	 * could be on top.
-	 */
-	size = sizeof key_funct/sizeof(int (*)(int));
-	for(i = 0; i < size; i++)
-		if(key_funct[i](key)) goto SKIP; 
-	
-	if(current->keys(key)) goto SKIP;
-	/* cursor movement */
-	size = sizeof key_handlers/sizeof(struct key_handler);
-	for(i = 0; i < size; i++) 
-		if(key_handlers[i].c == key) {
-			key_handlers[i].handler(current);
-			if(can_draw()) pad_draw();
-			goto SKIP;
-		}
-	switch(key) {
-	case 'c':
-		full_cmd ^= 1;
-		current->redraw();
-		break;
-	case '/':
-		m_search();
-		break;			
-	case KBD_F1:
-		help();
-		break;
-	case KBD_ESC:
-	case 'q':
+	int ret = mwin_keyh(key);
+	if(ret != KEY_FINAL && (key == 'q' || key == KBD_ESC)) {
 		curses_end();
 		exit(0);
-	default: return;
 	}
-SKIP:
-	wnoutrefresh(main_win);
-//wnoutrefresh(info_win.wd);
-	pad_refresh();
-	menu_refresh();
-	box_refresh();
-	info_refresh();
-	doupdate();
+	/* if need_redraw is set then redraw only wdgts with WDGT_NEED_REDRAW */
+	mwin_redraw(mwin->need_redraw);
+	mwin->need_redraw = 0;
+//	if(ret == KEY_SKIPPED) return;
+	mwin_wrefresh();
 }
 
 static void get_scrsize(int *y, int *x)
 {
 	struct winsize win;
-	if (ioctl(1,TIOCGWINSZ,&win) != -1){
-                *y = win.ws_row;
-		*x = win.ws_col;
-		return;
-	}
-exit(0);
-//	prg_exit(__FUNCTION__ ": ioctl error: cannot read screen size.");
+	if(ioctl(1,TIOCGWINSZ,&win) == -1)
+		err_exit(1, "ioctl error: cannot read screen size");
+
+	/* 
+	 * We always use coordinates that starts from zero
+	 * and physical screen size is a _number_ of rows/cols
+	 */
+	*y = win.ws_row-1;
+	*x = win.ws_col-1;
 }								
+
+static void resize(void)
+{
+	struct wdgt *w;	
+	struct list_head *l;
+	u32 prev_sy = mwin->sy;
+	u32 prev_sx = mwin->sx;
+	
+	get_scrsize(&mwin->sy, &mwin->sx);
+	
+	list_for_each_r(l, &mwin->wdgts) {
+		w = list_entry(l, struct wdgt, wdgts_l);
+		 /* 
+		  * we exapand pad's width but not height 
+		  * coz height depends on data source (output)
+		  * */
+		if(w->pxsize < mwin->sx) {
+			w->pxsize = mwin->sx+1;
+			scr_wresize(w, w->pysize, w->pxsize);
+		}	
+		w->xsize += mwin->sx - prev_sx;
+		if(w->flags & WDGT_NO_YRESIZE) continue;
+		w->ysize += mwin->sy - prev_sy;
+		if(w->decor) scr_decor_resize(w);
+werase(w->wd);
+	}
+	resizeterm(mwin->sy+1, mwin->sx+1);
+	//mwin_periodic();
+	mwin_redraw(1);
+	mwin_wrefresh();
+	size_changed = 0;
+}
 
 static void winch_handler()
 {
 	size_changed++;
-}
-
-/* 
- * Handle SIGWINCH. Order of calling various resize
- * functions is really important.
- */
-static void resize(void)
-{
-	get_scrsize(&screen_rows, &screen_cols);
-	resizeterm(screen_rows, screen_cols);
-	wresize(main_win, screen_rows-3, screen_cols);
-	win_init();
-	mvwin(help_win.wd, screen_rows - 1, 0);	
-//	wnoutrefresh(help_win.wd);
-//	wnoutrefresh(info_win.wd);
-	/* set the cursor position if necessary */
-	if(current->cursor > current->rows)
-		current->cursor = current->rows; 
-	werase(main_win);
-	current->redraw();
-	wnoutrefresh(main_win);                                             
-	print_help();
-	pad_resize();
-//	print_info();
-//update_load();
-	menu_resize();
-	box_resize();
-	info_resize();
-	doupdate();
-	size_changed = 0;
 }
 
 static void int_handler(int i)
@@ -284,20 +247,11 @@ static void set_sig(void)
 //	signal(SIGSEGV, segv_handler);
 }
 
-static void buf_alloc(int s)
-{
-	buf_size = s;
-	line_buf = malloc(buf_size);
-	if (!line_buf) err_exit(1, "Cannot allocate memory for buffer.");
-}	
-/****************************************************/
-
 static void wdgt_init(struct wdgt *w)
 {
-	INIT_LIST_HEAD(&w->refresh_l);
-	INIT_LIST_HEAD(&w->valchg_l);
-	INIT_LIST_HEAD(&w->keyh_l);
-	INIT_LIST_HEAD(&w->periodic_l);
+	INIT_LIST_HEAD(&w->wdgts_l);
+	INIT_LIST_HEAD(&w->msg_l);
+	MWADD_TO_LIST(w, wdgts);
 }
 
 static inline struct wdgt *wdgt_alloc(void)
@@ -306,25 +260,44 @@ static inline struct wdgt *wdgt_alloc(void)
 }
 
 /*
+ * Create window/pad structures specific to screen library used.
+ */
+static int wd_create(struct wdgt *w, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
+{
+//w->wd = scr_newwin(x, y, xsize, ysize);
+	w->wd = newpad(pysize+1, pxsize+1);
+	w->color = c;
+	w->pysize = pysize;
+	w->pxsize = pxsize;
+	wbkgd((WINDOW*)w->wd, COLOR_PAIR(c));
+	if(!w->wd) return 0;
+	return 1;
+}
+
+/*
  * Create new widget of given size
  */
-static struct wdgt *wdgt_new(u32 x, u32 y, u32 xsize, u32 ysize, char *name)
+static struct wdgt *wdgt_new(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, char *name, u8 c)
 {
 	struct wdgt *w;
 	if(!(w = wdgt_alloc())) err_exit(1, "Cannot allocate memory for a new widget");
-	DBG("Allocated new widget %p, %d bytes, %d, %d, %d, %d", w, sizeof *w, x, y, xsize, ysize);
 	wdgt_init(w);
 	memcpy(w->name, name, sizeof w->name - 1);
 	w->x = x;
 	w->y = y;
 	w->xsize = xsize;
 	w->ysize = ysize;
-	w->scrwd = scr_newwin(x, y, xsize, ysize);
-	if(!w->scrwd) {
-		DBG("Cannot create widget");
+	w->vy = w->vx = 0;
+	if(!pysize) pysize = ysize - y + 1;
+	if(!pxsize) pxsize = xsize - x + 1;
+	if(!wd_create(w, ysize, xsize, pysize, pxsize, c)) {
 		free(w);
 		return 0;
 	}
+	DBG("New '%s', %d, %d, %d, %d, %d, %d", w->name, w->y, w->x, w->ysize, w->xsize, w->pysize, w->pxsize);
+	/* disable cursor by default */
+	w->crsr = -1;
+	w->mwin = mwin;
 	return w;
 }
 
@@ -338,47 +311,108 @@ static char *get_load()
         return buf;
 }
 
+static void irefresh(struct wdgt *w)
+{	
+	pnoutrefresh(w->wd, 0, 0, 0, 0, w->ysize, w->xsize);
+}
+
 static void info_periodic(struct wdgt *w)
 {
 	char *s;
+	int n;
 	s = get_load();
-	
-	DBG("Periodic for widget '%s'", w->name);
+	n = strlen(s);
+	scr_werase(w);
 	scr_addfstr(w, proc_ucount(), 0, 0);
-	scr_addstr(w, s, screen_cols-strlen(s), 0);
+	scr_maddstr(w, s, 0, w->xsize - n + 1, n);
+//	s = wmsg_send(w, 0,  0);
+//	scr_addstr(w, s, 0, w->xsize - n + 1, n);
 }
 
-static void info_wdgt(u32 x, u32 y, u32 xsize, u32 ysize)
+static void info_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
 {
 	struct wdgt *w;
-	w = wdgt_new(x, y, xsize, ysize, "info");
-	ADD_WDGTS(w);
-	ADD_REFRESH(w);
-	ADD_PERIODIC(w);
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "info", c);
+	if(!w) return;
+	MWADD_TO_LIST(w, msg);
 	w->periodic = info_periodic;
+	w->wrefresh = irefresh;
+	w->flags |= WDGT_NO_YRESIZE;
 }
 
-static void uplist_periodic(struct wdgt *w)
-{
-	scr_addstr(w, "dupa", 0, 0);
-}
-static void uplist_wdgt(u32 x, u32 y, u32 xsize, u32 ysize)
+static void hlp_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
 {
 	struct wdgt *w;
-	w = wdgt_new(x, y, xsize, ysize, "uplist");
-	ADD_WDGTS(w);
-	ADD_REFRESH(w);
-	ADD_PERIODIC(w);
-//	w->periodic = uplist_periodic;
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "help", c);
+	if(!w) return;
+	MWADD_TO_LIST(w, msg);
+	w->flags |= WDGT_NO_YRESIZE;
+	hlp_reg(w);
+}
+
+
+static void ulist_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
+{
+	struct wdgt *w;
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "ulist", c);
+	if(!w) return;
+	/* enable cursor for this widget */
+	w->crsr = 0;
+	mwin->mwdgt = w;
+	
+	ulist_reg(w);
+}
+
+static void ptree_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
+{
+	struct wdgt *w;
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "ptree", c);
+	if(!w) return;
+	/* enable cursor for this widget */
+	w->crsr = 0;
+	ptree_reg(w);
+}
+
+/* extended information subwindow */
+static void exti_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
+{
+	struct wdgt *w;
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "exti", c);
+	if(!w) return;
+	exti_reg(w);
+}	
+static void input_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
+{	
+	struct wdgt *w;
+	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "input", c);
+	if(!w) return;
+	input_reg(w);
 }
 
 /*
- * Create widgets
+ * Order of creating widgets is important, since
+ * they overlap. On widget creation it is added
+ * to mwin refresh/redraw list and calling to w->wrefresh has
+ * to be done in proper order. Therefore widget doesn't remove itself 
+ * from mwin wrefresh/redraw list to hide itelf but sets his own 
+ * function pointers (wrefres/redraw) to zero.
+ * Create widgets here from bottom to top, in terms of on screen
+ * visibility. 
+ * [sy,sx] - physical screen size, numbering starts from zero. 
  */
-static void wdgts_create(int sx, int sy)
+static void wdgts_create(int sy, int sx)
 {
-	info_wdgt(0, 0, sx, 2);	
-	uplist_wdgt(0, 2, sx, sy-3);
+	/*
+	 *  upper left corner: [y,x], lower right [y,x], 
+	 * real size of the pad  [y,x] (numbering always starts from 0) 
+	 */
+	info_wdgt(0, 0, 1, sx, 1, sx, CLR_CYAN_BLACK);	
+	hlp_wdgt(sy, 0, sy, sx, sy, sx, CLR_CYAN_BLACK);	
+	ulist_wdgt(2, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK); 
+	ptree_wdgt(2, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK);
+	exti_wdgt(sy/4, sx/5, sy-sy/4, sx-sx/5, 256, 128, CLR_BLACK_CYAN);
+	//input_wdgt(sy/3, sx/5, sy-sy/3, sx-sx/5, 0, 0, CLR_BLACK_WHITE);
+	input_wdgt(sy*2/5, sx/5, sy-sy*2/5, sx-sx/5, 0, 0, CLR_BLACK_WHITE);
 }
 
 static void scrlib_init(void)
@@ -388,35 +422,21 @@ static void scrlib_init(void)
 
 static void main_init(void)
 {
-	get_scrsize(&screen_rows, &screen_cols);
-	buf_alloc(screen_cols + screen_cols/2);
-
+	get_scrsize(&mwin->sy, &mwin->sx);
 	mwin_init();
 
 	/* initialize screen library */	
 	scrlib_init();
 
 	/* create all widgets */
-	wdgts_create(screen_cols, screen_rows);
-	
-	current = &users_list;
+	wdgts_create(mwin->sy, mwin->sx);
 	users_init();
-        procwin_init();
-	subwin_init();
-	menu_init();
 	set_sig();
 }
 
 static void main_start(void)
 {
-	mwin_periodic();
-	mwin_refresh();
-
-	print_help();
-	current->redraw();
-	wnoutrefresh(current->wd);
-	wnoutrefresh(help_win.wd);
-	doupdate();
+	main_periodic();
 }	
 
 int main(int argc, char **argv)

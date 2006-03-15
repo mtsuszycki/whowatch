@@ -17,8 +17,6 @@ struct owner{
 	int uid;
 	struct owner *next;
 };
-
-/* remember each resolved uid->name in the hash table to save CPU time */
 static struct owner *hash_table[HASHSIZE];
 
 static inline int hash_fun(int n)
@@ -26,7 +24,7 @@ static inline int hash_fun(int n)
 	return n&(HASHSIZE-1);
 }
 
-static inline struct owner* find_by_uid(int n)
+static struct owner* find_by_uid(int n)
 {
 	struct owner* p;
 
@@ -38,7 +36,7 @@ static inline struct owner* find_by_uid(int n)
 	return p;
 }
 
-static inline struct owner* new_owner(int n)
+static struct owner* new_owner(int n)
 {
 	struct owner* p;
 	struct passwd *u;
@@ -63,3 +61,4 @@ char *get_owner_name(int u)
 	if (!p) p = new_owner(u);
 	return p->name;
 }
+

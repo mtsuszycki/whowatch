@@ -9,6 +9,8 @@
 
 extern int plugin_type;
 
+void plgn_out_start(void);
+void output_start(void);
 void println(const char *, ...);
 void print(const char *, ...);
 void title(const char *, ...);

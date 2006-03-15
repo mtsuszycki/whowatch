@@ -4,7 +4,6 @@
  */
 
 #include "whowatch.h"
-#include "menu_hooks.h"
 
 #define TITLE_START	2	/* left margin inside menu bar */
 #define TITLE_STEP	4
@@ -43,6 +42,136 @@ struct item_bind_t  {
 	struct item_t item;
 };
 
+
+static char *prev_search;
+
+void  m_exit(void)
+{
+//dolog(__FUNCTION__":entering\n");
+	prg_exit("");
+}	
+void m_details(void)
+{
+	return;
+	//sub_keys('d');
+}
+
+void m_kill(void)
+{
+	return; //current->keys('K' | KBD_CTRL);
+}
+
+void m_hup(void)
+{
+	return; //current->keys('U' | KBD_CTRL);
+}
+
+void m_term(void)
+{
+	return; //current->keys('T' | KBD_CTRL);
+}
+
+void m_sysinfo(void)
+{
+	return;
+//	sub_keys('s');
+}
+
+
+void m_siglist(void)
+{
+	return;
+//	sub_keys('l');
+}
+
+
+void m_process(void)
+{
+	return ; //current->keys('t');
+}
+
+void m_owner(void)
+{
+	return; //current->keys('o');
+}
+
+void m_long(void)
+{
+	full_cmd ^= 1;
+	return ; //current->redraw();
+}
+
+void m_switch(void)
+{
+	return ; //current->keys(KBD_ENTER);
+}
+
+void m_idle(void)
+{
+	return ; //current->keys('i');
+}
+/*
+static void print_about(void *unused)
+{
+	println("Whowatch 1.7.0");
+	println("Interactive process and users monitoring tool.");
+	println("Author: Michal Suszycki <mike@wizard.ae.krakow.pl>");
+	println("");
+	println("BUILTIN PLUGINS:");
+	println("- proccess plugin: show detailed information about process");
+	println("- user plugin: show detailed information about user");
+	println("- system plugin: system details");
+}
+*/
+
+void m_about(void)
+{
+	;
+	//new_sub(print_about);
+}
+/*
+static void __load_plugin(char *s)
+{
+	;
+//	char *err;
+//	if(!(err = plugin_load(s)))
+//		info_box(" Message ", "Plugin has been loaded successfully.");
+//	else if(*s) 
+	//info_box(" Error ", err);
+}
+*/
+
+void m_load_plugin(void)
+{
+	;
+//	input_box(" Load plugin ", "Path ", 0, __load_plugin);
+}
+/*
+static void search(char *s)
+{
+	do_search(s);	
+}
+*/
+
+/*
+void clear_search(void)
+{
+	prev_search = 0;
+}
+*/
+
+void set_search(char *s)
+{
+	prev_search = s;
+}
+
+void m_search(void) 
+{
+	;
+//	input_box(" Search ", "Pattern ", prev_search, search);
+}
+
+
 static struct item_bind_t item_bind[] = {
 	{ 0, { DUMMY_HEAD , " Load plugin", "", m_load_plugin } } ,
 	{ 0, { DUMMY_HEAD , " Exit", "q ", m_exit } } ,
@@ -60,7 +189,7 @@ static struct item_bind_t item_bind[] = {
 	{ 2, { DUMMY_HEAD , " Send TERM", "^T ", m_term } } ,
 	{ 3, { DUMMY_HEAD , " Toggle idle", "i ", m_idle } } ,
 	{ 3, { DUMMY_HEAD , " Toggle long", "c ", m_long } } ,
-	{ 4, { DUMMY_HEAD , " Keys", "F1 ", help } } ,
+//	{ 4, { DUMMY_HEAD , " Keys", "F1 ", help } } ,
 	{ 4, { DUMMY_HEAD , " About", "", m_about } } ,
 	{ 4, { DUMMY_HEAD , " Copyright", "", 0 } } ,
 };
@@ -143,8 +272,9 @@ void menu_refresh(void)
 }
 
 static void set_size(void)
-{
-	menu.cols = screen_cols;
+{	
+	;
+//	menu.cols = screen_cols;
 }
 
 /* 
@@ -168,7 +298,6 @@ static void titles_print(void)
 
 static void submenu_create(struct submenu_t *t)
 {
-assert(t);
 	submenu_wd = newpad(t->rows, t->cols);
 	if(!submenu_wd) prg_exit("Cannot create ncurses pad.");
 	wbkgd(submenu_wd, COLOR_PAIR(9));
@@ -211,7 +340,7 @@ static void menu_destroy()
 	menu.wd = submenu_wd = 0;
 	item_cursor = 0;
 	cur_item = 0;
-	redrawwin(main_win);
+//	redrawwin(main_win);
 //redrawwin(info_win.wd);
 }
 
@@ -253,7 +382,7 @@ assert(cur_submenu);
 		strlen(cur_submenu->title)+4, A_REVERSE, 9, 0);
 	wnoutrefresh(menu.wd);
 //	submenu_refresh(cur_submenu);
-redrawwin(main_win);
+//redrawwin(main_win);
 //wnoutrefresh(info_win.wd);
 //redrawwin(info_win.wd);
 }	
@@ -329,3 +458,7 @@ void menu_resize(void)
 	menu_refresh();
 	redrawwin(menu.wd);
 }
+
+
+
+

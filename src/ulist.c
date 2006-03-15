@@ -1,37 +1,6 @@
 #include "whowatch.h"
 #include "config.h"
-
-#ifndef UTMP_FILE
-#define UTMP_FILE 	"/var/run/utmp"
-#endif
-
-#ifndef WTMP_FILE
-#define WTMP_FILE 	"/var/log/wtmp"
-#endif
-
-#define LOGIN		1
-#define LOGOUT		-1		
-
-#ifdef HAVE_UT_NAME
-#define ut_user ut_name
-#endif
-
-LIST_HEAD(users_l);
-static int toggle;	/* if 0 show cmd line else show idle time 	*/
-
-char *line_buf;		/* global buffer for line printing		*/
-int buf_size;		/* allocated buffer size			*/
-
-#ifdef HAVE_PROCESS_SYSCTL
-int get_login_pid(char *);
-#endif
-
-struct prot_t
-{
-	char *s;
-	short port;
-	unsigned int nr;
-};
+#include "ulist.h"
 
 /* indexes in prot_tab[] */
 #define	SSH		0
@@ -45,18 +14,17 @@ static struct prot_t prot_tab[] = {
 	{ "(sshd", 22, 0 }, { "(in.telnetd)", 23, 0 }, { "(init)", -1, 0 }
 #endif
 };
+//static char *hlp = "\001[F1]Help [F9]Menu [ENT]proc all[t]ree [i]dle/cmd [c]md [d]etails [s]ysinfo",
+static char *hlp = "[ENT]proc all[t]ree [d]etails [s]ysinfo";
+	
+static u32 nusers;
+static struct wdgt *self;
 
-
-/*  
- *  update number of users (ssh users, telnet users...) and change 
- *  prot in the appropriate user structure.
- */
-void u_count(char *name, int p)
+static void u_count(char *name, int p)
 {
 	int i;
 	struct prot_t *t;
-	users_list.d_lines += p;
-//dolog(__FUNCTION__": dlines %d\n", users_list.d_lines);	
+	nusers += p;
 	for(i = 0; i < sizeof prot_tab/sizeof(struct prot_t); i++){
 		t = &prot_tab[i];
 		if(strncmp(t->s, name, strlen(t->s))) continue;
@@ -84,6 +52,7 @@ struct user_t *alloc_user(struct utmp *entry)
 {
 	struct user_t *u;
 	int ppid;
+	
 	u = calloc(1, sizeof *u);
 	if(!u) errx(1, "Cannot allocate memory.");
 	strncpy(u->name, entry->ut_user, UT_NAMESIZE);
@@ -97,8 +66,7 @@ struct user_t *alloc_user(struct utmp *entry)
  	if((ppid = get_ppid(u->pid)) == -1)
 		strncpy(u->parent, "can't access", sizeof u->parent);
 	else 	strncpy(u->parent, get_name(ppid), sizeof u->parent - 1);
-	
-	u->line = users_list.d_lines;
+	u->line = nusers;	
 	return u;
 }
 
@@ -111,43 +79,40 @@ static struct user_t* new_user(struct utmp *ut)
 	return u;
 }
 	
-static void print_user(struct user_t *u)
+static void uprint(struct user_t *u, struct wdgt *w)
 {
-	wattrset(users_list.wd, A_BOLD);
-	snprintf(line_buf, buf_size, 
-		"%-14.14s %-9.9s %-6.6s %-19.19s %s",
+	int n;
+	scr_attr_set(w, A_BOLD);
+	n = snprintf(w->mwin->gbuf, w->mwin->gbsize, "%-14.14s %-9.9s %-6.6s %-19.19s %s",
 		u->parent, u->name, u->tty, u->host, 
 		toggle?count_idle(u->tty):get_w(u->pid));
-	line_buf[buf_size - 1] = 0;
-	print_line(&users_list, line_buf , u->line, 0);
+	scr_maddstr(w, w->mwin->gbuf, u->line, 0, n);
 }
 
-void users_list_refresh(void)
+void uredraw(struct wdgt *w)
 {
 	struct list_head *tmp;
 	struct user_t *u;
+	scr_werase(w);	
+	scr_output_start(w);
 	list_for_each_r(tmp, &users_l) {
 		u = list_entry(tmp, struct user_t, head);
-		if(above(u->line, &users_list)) continue;
-		if(below(u->line, &users_list)) break;
-		print_user(u);
+		uprint(u, w);
 	}
+	scr_output_end(w);
 }
 	
 /*
  * Gather informations about users currently on the machine
  * Called only at start or restart
  */
-static void read_utmp(void)		
+void read_utmp(void)		
 {
 	int fd, i;
 	static struct utmp entry;
 	struct user_t *u;
 	
-	if ((fd = open(UTMP_FILE ,O_RDONLY)) == -1){
-		curses_end();
-		errx(1, "Cannot open " UTMP_FILE);
-	}
+	if ((fd = open(UTMP_FILE ,O_RDONLY)) == -1) err_exit(1, "Cannot open utmp");
 	while((i = read(fd, &entry,sizeof entry)) > 0) {
 		if(i != sizeof entry) errx(1, "Error reading " UTMP_FILE );
 #ifdef HAVE_USER_PROCESS
@@ -161,15 +126,15 @@ static void read_utmp(void)
 	return;
 }
 
-
 /*
  * get user entry from specific line (cursor position)
  */
-struct user_t *cursor_user(void)	
+struct user_t *cursor_user(int line)	
 {
 	struct user_t *u;
 	struct list_head *h;
-	int line = current->cursor + current->offset;
+	DBG("looking for user on line %d", line);
+//	int line = 0; //current->cursor + current->offset;
 	list_for_each(h, &users_l) {
 		u = list_entry(h, struct user_t, head);
 		if(u->line == line) return u;
@@ -177,30 +142,24 @@ struct user_t *cursor_user(void)
 	return 0;
 }
 
-static void del_user(struct user_t *u)
+static void udel(struct user_t *u, struct wdgt *w)
 {
-	delete_line(&users_list, u->line);
+	scr_delline(w, u->line);
+	scr_ldeleted(w, u->line);
 	update_line(u->line);
 	u_count(u->parent, LOGOUT);
 	list_del(&u->head);
 	free(u);
 }
 
-
 char *proc_ucount(void)
 {
         static char buf[64];
 
-	int other = users_list.d_lines - prot_tab[LOCAL].nr - 
-		prot_tab[TELNET].nr - prot_tab[SSH].nr;
-//werase(info_win.wd);
-        snprintf(buf, sizeof buf - 1,
-                "\x1%d users: (%d local, %d telnet, %d ssh, %d other)",
-   
-   		users_list.d_lines, prot_tab[LOCAL].nr, prot_tab[TELNET].nr, prot_tab[SSH].nr, other);
+	int other = nusers - prot_tab[LOCAL].nr - prot_tab[TELNET].nr - prot_tab[SSH].nr;
+        snprintf(buf, sizeof buf - 1,"\x1%d users: (%d local, %d telnet, %d ssh, %d other)",
+   		nusers, prot_tab[LOCAL].nr, prot_tab[TELNET].nr, prot_tab[SSH].nr, other);
 	return buf;
-//        echo_line(&info_win, buf, 0);
- //       wnoutrefresh(info_win.wd);
 }
 
 static void open_wtmp(int *wtmp_fd)
@@ -212,21 +171,17 @@ static void open_wtmp(int *wtmp_fd)
 /*
  * Check wtmp for logouts or new logins
  */
-void check_wtmp(void)
+static void check_wtmp(struct wdgt *w)
 {
 	static int wtmp_fd;
 	struct user_t *u;
 	struct list_head *h;
 	struct utmp entry;
-	int i, show, changed;
-	show = changed = 0;
+	int i, changed = 0;
 	if(!wtmp_fd) open_wtmp(&wtmp_fd);	
-	if(current == &users_list) show = 1;
+	
 	while((i = read(wtmp_fd, &entry, sizeof entry)) > 0){ 
-		if (i < sizeof entry){
-			curses_end();
-	//		errx(1, __FUNCTION__ ": error reading " WTMP_FILE );
-		}
+		if (i < sizeof entry) prg_exit("Error reading wtmp");
 		/* user just logged in */
 #ifdef HAVE_USER_PROCESS
 		if(entry.ut_type == USER_PROCESS) {
@@ -247,99 +202,129 @@ void check_wtmp(void)
 			u = list_entry(h, struct user_t, head);
 			if(strncmp(u->tty, entry.ut_line, UT_LINESIZE)) 
 				continue;
-			del_user(u);	
+			udel(u, w);	
 			changed = 1;
 			break;
 		}
 	}
 	if(!changed) return;
-	if(show) users_list_refresh();
-//print_info();
 }
 
-char *users_list_giveline(int line)
-{
-	struct user_t *u;
-	struct list_head *h;	
-	list_for_each(h, &users_l) {
-		u = list_entry(h, struct user_t, head);
-		if (line != u->line) continue;
-		snprintf(line_buf, buf_size, 
-			"%-14.14s %-9.9s %-6.6s %-19.19s %s", 
-			u->parent, u->name, u->tty, u->host, 
-				toggle?count_idle(u->tty):get_w(u->pid));
-		return line_buf;
-	}
-	return "not available";
-}
-
-static void cmdline(void)
-{
-        struct window *q = &users_list;
-        struct user_t *u;
-        struct list_head *h;
-        int y, x;
-
-	if(CMD_COLUMN >= screen_cols) return;
-        list_for_each(h, &users_l) {
-                u = list_entry(h, struct user_t, head);
-//                if(u->line < q->offset ||
-  //                      u->line > q->offset + q->rows - 1)
-		if(outside(u->line, q)) continue;
-		wmove(q->wd, u->line - q->offset, CMD_COLUMN);
-                cursor_off(q, q->cursor);
-                wattrset(q->wd, A_BOLD);
-                wmove(q->wd, u->line - q->offset, CMD_COLUMN);
-                waddnstr(q->wd, toggle?count_idle(u->tty):get_w(u->pid),
-                         COLS - CMD_COLUMN - 1);
-                getyx(q->wd, y, x);
-                while(x++ < q->cols + 1)
-                        waddch(q->wd, ' ');
-                cursor_on(q, q->cursor);
-                wmove(q->wd, q->cursor, q->cols + 1);
-        }
-}
-
-
-static int ulist_key(int key)
-{
-	struct user_t *u = 0;
-	pid_t pid = INIT_PID;
-        
-	switch(key) {
-        case KBD_ENTER:
-		u = cursor_user();
-		if(u) pid = u->pid; 
-        case 't':
-		werase(main_win);
-		current = &proc_win;
-		print_help();
-		show_tree(pid);
-		tree_title(u);
-		sub_switch();
-		pad_draw();
-		break;
-        case 'i':
-                toggle ^= 1;
-                cmdline();
-                break;
-        default: return 0;
-        }
-	return 1;
-}
-
-static void periodic(void)
-{
-	cmdline();
+static void ulist_hlp(struct wdgt *w)
+{		
+	DBG("sending %s", hlp);
+	wmsg_send(w, MCUR_HLP, hlp);
 }
 
 void users_init(void)
 {
-	users_list.giveme_line = users_list_giveline;
-	users_list.keys = ulist_key;
-	users_list.periodic = periodic;
-	users_list.redraw = users_list_refresh;
 	read_utmp();
+}
+
+static void ulist_periodic(struct wdgt *w)
+{
+	static int i;
+
+	if(!i) {
+		wmsg_send(w, MCUR_HLP, hlp);
+		i = 1;
+	}
+	DBG("ulist periodic");
+	check_wtmp(w);
+}
+
+static void *cval(void)
+{
+	static struct user_t *u;
+	
+	u = cursor_user(self->crsr);
+	if(u) return &u->pid;
+	return 0;
+}
+
+static void *umsgh(struct wdgt *w, int type, struct wdgt *s, void *d)
+{	
+	struct user_t *u;
+	/* accept it even not visible, ptree can ask about user pid*/
+	if(type == MWANT_UPID) {
+		u = cursor_user(w->crsr);
+		if(u) return &u->pid;
+		else return 0;
+	}
+	if(WIN_HIDDEN(w)) return 0;
+DBG("ulist responded to type %d", type);	
+	switch(type) {
+		case MALL_CRSR_REG: w->flags |= WDGT_CRSR_SND; break;
+		case MALL_CRSR_UNREG: w->flags &= ~ WDGT_CRSR_SND; break;
+		case MWANT_CRSR_VAL: u = cursor_user(w->crsr);
+				if(u) return u->name;
+				else return "No user found";
+	}
+	return 0;
+}
+
+/*
+ * Give up main window if currently printing output there
+ * or start printing if not there
+ */
+static void uswitch(struct wdgt *w, int k, int p)
+{
+	if(!WIN_HIDDEN(w)) {
+		DBG("Deleting ulist from lists");
+		w->redraw = 0;
+		w->wrefresh = 0;
+	}
+	else {
+		if(k == 't') return;
+		ulist_hlp(w);
+		w->redraw = uredraw;
+		w->wrefresh = scr_wrefresh;
+		WNEED_REDRAW(w);
+		wmsg_send(w, MSND_ESOURCE, euser);
+	}	
+}
+
+static void crsr_send(struct wdgt *w)
+{
+	struct user_t *u;
+	
+	if(!(w->flags & WDGT_CRSR_SND)) return;
+	u = cursor_user(w->crsr);
+	if(!u) return;
+	DBG("sending current name %s", u->name);
+	wmsg_send(w, MCUR_CRSR, u->name);
+}
+
+
+static int ukeyh(struct wdgt *w, int key)
+{
+	int ret = KEY_SKIPPED;
+	static int pkey;
+
+	/* hide/unhide widget */
+	if(key == 't' || key == KBD_ENTER) {
+		uswitch(w, key, pkey);
+		pkey = key;
+		return KEY_HANDLED;
+	}
+	if(WIN_HIDDEN(w)) return ret;	
+	switch(key) {
+		default:  ret = scr_keyh(w, key);
+			  if(ret == KEY_HANDLED) crsr_send(w);
+	}
+	return ret;
+}
+
+void ulist_reg(struct wdgt *w)
+{
+	w->periodic = ulist_periodic;
+	w->redraw = uredraw;
+	w->wrefresh = scr_wrefresh;
+	w->keyh = ukeyh;
+	w->msgh = umsgh;
+	w->mwin->cval = cval;
+	mwin_msg_on(w);
+	self = w;
 }
 
 /* 
@@ -363,5 +348,4 @@ unsigned int user_search(int line)
 	}
 	return -1;
 }
-
 

@@ -15,7 +15,7 @@
 
 static inline void no_info(void)
 {
-	println("Information unavailable.");
+	println("Information unavailable.\n");
 }
 
 static inline char *_read_link(const char *path)
@@ -38,6 +38,7 @@ static void read_link(int pid, char *name)
 		return;
 	}
 	println(v);
+	newln();
 }
 
 struct netconn_t {
@@ -96,7 +97,6 @@ static void hash_init(struct list_head *hash)
 
 static inline void add_to_hash(struct netconn_t *c, int inode)
 {
-////dolog(__FUNCTION__ ": inode %d, %s\n",inode, ip_addr(c));
 	list_add(&c->n_hash, tcp_hashtable + hash(inode));
 }		
 
@@ -105,15 +105,12 @@ static struct netconn_t *tcp_find(unsigned int inode, struct list_head *head)
 	struct list_head *h, *tmp;
 	struct netconn_t *t;
 	tmp  = head + hash(inode);
-////dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
 	list_for_each(h, tmp) {
 		t = list_entry(h, struct netconn_t, n_hash);
 		if(inode == t->inode) {
-////dolog(__FUNCTION__ ": found [%d]\n", t->inode);		
 			return t;
 }			
 	}
-////dolog(__FUNCTION__ ": [%d] not found\n", inode);	
 	return 0;
 }
 
@@ -127,7 +124,6 @@ static struct netconn_t *new_netconn(unsigned int inode, struct netconn_t *src)
 	t->inode = inode;
 	add_to_hash(t, inode);
 	list_add(&t->n_list, &tcp_l);
-//dolog(__FUNCTION__": new conn [%d]\n", inode);	
 	return t;
 }
 
@@ -139,22 +135,16 @@ bzero(&t, sizeof(t));
 	i = sscanf(s, "%x:%x %x:%x %x", &t.s_addr, &t.s_port, 
 			&t.d_addr, &t.d_port, &t.state);
 	if(i != 5) return 0;
-////dolog(__FUNCTION__": entering\n");	
 	tmp = tcp_find(inode, tcp_hashtable);
 	if(!tmp) {
-////dolog(__FUNCTION__ ": %d %d %d not found\n", inode, t.s_port, t.d_port);
 
 		tmp =  new_netconn(inode, &t);		
 		return tmp;
 	}	
 //	t.used = tmp->used = 0;
 	if(!memcmp((char*)&t + offset,(char*)tmp + offset, sizeof(t) - offset)) {
-//dolog(__FUNCTION__ ": %d %d %d %s found, not changed\n", 
-//inode, t.s_port, t.d_port, tcp_state[t.state-1]);	
 		return tmp; 
 	}
-//dolog(__FUNCTION__ ":  %d %d->%d %d->%d found,changed\n", 
- // inode, t.s_port, t.d_port, tmp->s_port, tmp->d_port);	
 
 
 memcpy((char*)&t + offset, (char*)tmp + offset, sizeof(t) - offset);
@@ -179,13 +169,12 @@ static void read_tcp_conn(void)
 	int i;
 	unsigned int inode;
 	static int flag = 0;
+return;
 	if(!flag) {
 		hash_init(tcp_hashtable); 
 		flag = 1;
 	}	
-////dolog(__FUNCTION__ ": reading tcp connections\n");
 	if(!(f = fopen("/proc/net/tcp", "r"))) return;
-	/* skip titles */
 	fgets(buf, sizeof buf, f);
 	while(fgets(buf, sizeof buf, f)) {
 		i = strlen(buf) - 1;
@@ -197,13 +186,12 @@ static void read_tcp_conn(void)
 		validate(inode, tmp);
 	}
 	fclose(f);
-////dolog(__FUNCTION__ ": done.\n");	
 	return;
 }
 
 /*
  * Print resolved IP:port->IP:port inside process details
- * subwindow. 
+ * subwindow.
  */
 static void print_net_conn(struct netconn_t *t)
 {
@@ -218,23 +206,20 @@ static void print_net_conn(struct netconn_t *t)
 	boldoff();
 }
 
-
 static int show_net_conn(char *s)
 {
 	struct netconn_t *t;
 	unsigned int inode = 0;	
+return 1;	
 	if(sscanf(s, "%d", &inode) != 1) return 1;
-////dolog(__FUNCTION__ ": looking for [%d]\n", inode);	
 	t = tcp_find(inode, tcp_hashtable);
 	if(!t) {
-////dolog(__FUNCTION__ ": %d not found\n", inode);	
 		return 0;
 	}
-////dolog(__FUNCTION__ ": %d found, printing\n", inode);		
 	print_net_conn(t);
 	return 1;
 }
-		
+
 /*
 static void del_conn(void)
 {
@@ -267,11 +252,9 @@ void open_fds(int pid, char *name)
 		return;
 	}
 	if(!count || ticks - count >= 2) {
-//write(1, "\a", 1);	
-////dolog(__FUNCTION__ " reading tcp conn %d %d\n", ticks, ticks%2);	
-	read_tcp_conn();
-	count = ticks;
-
+		//write(1, "\a", 1);	
+		read_tcp_conn();
+		count = ticks;
 	}	
 	while((dn = readdir(d))) {
 		if(dn->d_name[0] == '.') continue;
@@ -280,9 +263,11 @@ void open_fds(int pid, char *name)
 		s = _read_link(buf);
 		if(!s) no_info();
 		else {
-			if(!strncmp("socket:[", s, 8) && show_net_conn(s+8));
-			else print("%s", s);
-			print("\n");
+			//if(!strncmp("socket:[", s, 8) && show_net_conn(s+8));
+			//else 
+			show_net_conn(s+8);
+			println("%s", s);
+			//print("\n");
 			newln();
 		}	
 	}
@@ -336,8 +321,8 @@ static void read_proc_file(char *name, char *start, char *end)
 		if(!ok && !strncmp(buf, start, slen)) ok = 1;
 		if(end && !strncmp(buf, end, elen)) goto END;
 		if(!ok) continue;
-		print(buf);
-		newln();
+		println(buf);
+		//newln();
 	}
 END:	
 	if(!ok) no_info();
@@ -432,16 +417,18 @@ struct proc_detail_t proc_details_t[] = {
 };
 
 
-void builtin_proc_draw(void *p)
+void eproc(void *p)
 {
         int i;
-	int pid = *(int*)p;
+	int pid = !p?1:*(u32*)p;
         struct proc_detail_t *t;
-        int size = sizeof proc_details_t / sizeof(struct proc_detail_t);
+	int size;
+	plgn_out_start();
+//print("PID %d\n", pid);newln();
+	size = sizeof proc_details_t / sizeof(struct proc_detail_t);
 	for(i = 0; i < size; i++) {
                 t = &proc_details_t[i];
 		title("%s", t->title);
-		newln();
 		t->fn(pid, t->name);
 	}
 }
@@ -518,37 +505,46 @@ static void get_cpu_info()
 	print("%s", buf);
 }
 
-void builtin_sys_draw(void *unused)
+void esys(void *unused)
 {
 	int c;
-	print("BOOT TIME: ");
+	plgn_out_start();
+
+	title("BOOT TIME: ");
 	print_boot_time();
-	print("CPU: ");
+	title("CPU: ");
 	get_cpu_info();
-	println("MEMORY:");
+	title("MEMORY:"); newln();
 	read_proc_file("/proc/meminfo", "MemTotal:", 0);
-	title("USED FILES: ");
+	title("USED FILES: "); ;
+
 	c = read_file_pos("/proc/sys/fs/file-nr", 2);
 	if(c == -1) no_info();
 	else println("%d", c);
-	print("USED INODES: ");
+	title("\nUSED INODES: ");
+
 	c = read_file_pos("/proc/sys/fs/inode-nr", 2);
 	if(c == -1) no_info();
 	else println("%d", c);
 	
-	print("MAX FILES: ");
+	title("\nMAX FILES: ");
 	read_proc_file("/proc/sys/fs/file-max", 0, 0);
-	print("MAX INODES: ");
+	title("MAX INODES: ");
 	read_proc_file("/proc/sys/fs/inode-max", 0, 0);
-	println("\nSTAT:");
+	title("\nSTAT:"); newln();
+
 	read_proc_file("/proc/stat", "cpu", "intr");
-	println("\nLOADED MODULES:");
+	title("\nLOADED MODULES:"); newln();
+
 	read_proc_file("/proc/modules", 0, 0);
-	println("\nFILESYSTEMS:");
+	title("\nFILESYSTEMS:"); newln();
+
 	read_proc_file("/proc/filesystems", 0, 0);
-	println("\nPARTITIONS:");
+	title("\nPARTITIONS:"); newln();
+
 	read_proc_file("/proc/partitions", 0, 0);
-	println("\nDEVICES:");
+	title("\nDEVICES:\n"); newln();
+
 	read_proc_file("/proc/devices", 0, 0);
 }	
 

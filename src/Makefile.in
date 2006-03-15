@@ -35,15 +35,14 @@ oldincludedir = /usr/include
 
 top_builddir = .
 
-CC = @CC@
+CC = @echo "    Compiling" [$@] ; @CC@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
 bin_PROGRAMS = whowatch
-whowatch_SOURCES = whowatch.c whowatch.h process.c procinfo.c proctree.c \
-block.c owner.c screen.c user.c subwin.c proctree.h procinfo.h pluglib.c \
-subwin.h menu.c input_box.c menu_hooks.c menu_hooks.h info_box.c \
-proc_plugin.c user_plugin.c kbd.c kbd.h search.c help.c
+whowatch_SOURCES = whowatch.c whowatch.h plist.c procinfo.c proctree.c \
+block.c owner.c screen.c ulist.c exti.c proctree.h procinfo.h pluglib.c \
+wdgts.c proc_plugin.c user_plugin.c kbd.c kbd.h 
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES = 
 PROGRAMS =  $(bin_PROGRAMS)
@@ -53,16 +52,15 @@ DEFS = @DEFS@ -I. -I$(srcdir) -I.
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-whowatch_OBJECTS =  process.o  procinfo.o proctree.o owner.o \
-screen.o block.o user.o subwin.o pluglib.o menu.o input_box.o \
-menu_hooks.o  info_box.o proc_plugin.o user_plugin.o kbd.o \
-search.o help.o whowatch.o 
+whowatch_OBJECTS = plist.o procinfo.o proctree.o owner.o \
+screen.o block.o ulist.o exti.o pluglib.o wdgts.o \
+proc_plugin.o user_plugin.o kbd.o whowatch.o 
 whowatch_LDADD = $(LDADD)
 whowatch_DEPENDENCIES = 
 whowatch_LDFLAGS = 
 CFLAGS = @CFLAGS@ -Wall -I. -ggdb
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
-CCLD = $(CC)
+CCLD = @echo "    Creating" $@ ; @CC@
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
 
 all: whowatch

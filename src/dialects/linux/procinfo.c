@@ -71,34 +71,30 @@ int get_ppid(int pid)
 char *get_cmdline(int pid)
 {
         static char buf[512];
+	int fd, i, n;
 	struct procinfo p;
-	char *t;
-	int c;
-        FILE *f;
-        int i = 0;
-        if(!full_cmd) goto no_full;
-        memset(buf, 0, sizeof buf);
-        sprintf(buf, "/proc/%d/cmdline",pid);
-        if (!(f = fopen(buf, "rt")))
-                return "-";
-        while (fread(buf+i,1,1,f) == 1){
-	        if (buf[i] == '\0') buf[i] = ' ';
-                if (i == sizeof buf - 1) break;
-                i++;
-        }
-        fclose(f);
-	buf[i] = '\0';
-	if(!i) {
+	char *s;
+//        if(!full_cmd) goto no_full;
+	snprintf(buf, sizeof buf, "/proc/%d/cmdline", pid);
+	if((fd = open(buf, O_RDONLY)) == -1)
+		return "-";
+	n = read(fd, buf, sizeof buf);
+	close(fd);
+ 	if(n == -1) return "-";
+	if(!n) goto no_full;
+	for(i = 0; i < n; i++) if(!buf[i]) buf[i] = ' ';
+	buf[i-1] = 0;
+	return buf;
 no_full:
-		get_info(pid, &p);
-		t = p.exec_file;
-		bzero(buf, sizeof buf);
-		c = strlen(t);
-		if(p.exec_file[0] == '(') t++;
-		if(p.exec_file[--c] == ')') p.exec_file[c] = 0;
-		strncpy(buf, t, sizeof buf - 1);
-	}	
-        return buf;
+	get_info(pid, &p);
+	s = p.exec_file;
+	n = strlen(p.exec_file);
+	if(*s == '(') s++;
+	if(p.exec_file[--n] == ')') p.exec_file[n] = 0;
+	memcpy(buf, s, n);
+	return buf;
+//	strncpy(buf, t, sizeof buf - 1);
+  //      return buf;
 }
 	 
 /* 
@@ -122,41 +118,41 @@ char *get_name(int pid)
 	return p.exec_file;
 }
 
+int proc_pid_uid(u32 pid)
+{
+	char buf[32];
+	struct stat s;
+        
+	snprintf(buf, sizeof buf, "/proc/%d", pid);
+	if(stat(buf, &s) == -1) return -1;
+	return s.st_uid;
+}
 
 /*
  * Get state and owner (effective uid) of a process
  */
 void get_state(struct process *p)
 {
-	char buf[64];
-	struct stat s;
-	char state;
+	char buf[32];
         FILE *f;
-        snprintf(buf, sizeof buf - 6, "/proc/%d", p->proc->pid);
-	p->uid = -1;
-	if (stat(buf, &s) >= 0) p->uid = s.st_uid;  
-	strcat(buf,"/stat");
-        if (!(f = fopen(buf,"rt"))){
-               	p->state = '?';
-		return;
-	}
-        fscanf(f,"%*d %*s %c", &state);
+	p->state = '?';
+        snprintf(buf, sizeof buf, "/proc/%d/stat", p->proc->pid);
+        if(!(f = fopen(buf,"rt"))) return;
+        fscanf(f,"%*d %*s %c", &p->state);
 	fclose(f);
-	p->state = state=='S'?' ':state;
+	if(p->state == 'S') p->state = ' ';
 }
 
 int proc_getloadavg(double d[], int l)
 {
 #ifndef HAVE_GETLOADAVG
 	FILE *f;
-	if(!(f = fopen("/proc/loadavg", "r")))
-		return -1;
-	if(fscanf(f, "%lf %lf %lf", &d[0], &d[1], &d[2]) != 3) {
-		fclose(f);
-		return -1;
-	}
+	int ret = -1;
+	if(!(f = fopen("/proc/loadavg", "r"))) return ret;
+	if(fscanf(f, "%lf %lf %lf", &d[0], &d[1], &d[2]) == 3)
+		ret = 0;
 	fclose(f);
-	return 0;
+	return ret;
 #else
 	return getloadavg(d, l);
 #endif

@@ -10,19 +10,41 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <time.h>
 #include <sys/ioctl.h>
 #include <curses.h>
+#include <ctype.h>
 #include <assert.h>
 #include "list.h"
 #include "kbd.h"
 #include "var.h"
 
+#define WIN_HIDDEN(w)	(!w->wrefresh)
+
 #define CURSOR_COLOR	A_REVERSE
 #define NORMAL_COLOR	A_NORMAL
 #define CMD_COLUMN	52
 
+/* wdgt flags*/
+#define WDGT_NO_YRESIZE	1	/* prevents from Y-resizing 	*/
+#define WDGT_CRSR_SND	2	/* propagate crsr changes	*/
+#define WDGT_NEED_REDRAW 4
+#define WNEED_REDRAW(w)	(w->flags |= WDGT_NEED_REDRAW)
+
 #define KEY_SKIPPED	0
 #define KEY_HANDLED	1
+#define KEY_FINAL	2
+
+#define MWANT_DSOURCE	0
+#define MWANT_CRSR_VAL	1
+#define MCUR_CRSR	2
+#define MCUR_HLP	3
+#define MWANT_UPID	4
+#define MALL_CRSR_REG	5  /* wdgt wants to receive cursor changes */
+#define MALL_CRSR_UNREG 6  /* doesn't want to receive it anymore   */
+#define MSND_ESOURCE	7
+
+#define CWND(w)		((WINDOW*)(w->wd))	/* ncurses window descriptor	*/
 
 #define INIT_PID		1
 #define real_line_nr(x,y)	((x) - (y)->offset)
@@ -30,100 +52,93 @@
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K,                      
                 CTRL_I, PG_DOWN, PG_UP, HOME, END, BACKSPACE, TAB };
 
-extern int screen_rows, screen_cols;
-extern char *line_buf;
-extern int buf_size;
 extern unsigned long long ticks;
-extern WINDOW *main_win;
 extern int full_cmd;
 
 struct wdgt;
-
 struct win {
-	struct list_head wdgts;		/* list of all widgets			*/
-	struct list_head refresh;	
-	struct list_head valchg;	/* list of widgets that wants to receive *
-					 * new val from main win		 */
-	struct list_head keyh;		/* list of wgdt's that have key handlers */	
-	struct list_head periodic;
-	struct wdgt *info;
-} win;
+        struct list_head wdgts;	/* list of all widgets                  */
+	struct list_head msg;	/* message bus for wdgts communication  */
+        u32     sy, sx;         /* physical screen coords (size+1)      */
+        u8      gbuf[256];	/* global buf to be used by any wdgt 	*/
+        u32     gbsize;
+	void	*(*cval)(void);	/* returns current cursor value	(pid/name) */
+        u8      need_redraw;	/* immediate redraw needed for all wdgts*/
+	struct wdgt *mwdgt;
+};
 
 struct wdgt {
 	struct 	list_head wdgts_l;
-	struct 	list_head refresh_l;
-	struct 	list_head valchg_l;
-	struct 	list_head keyh_l;
-	struct 	list_head periodic_l;
-	void 	*scrwd;			/* screen window/pad descriptor		*/
-	char	 name[8];			
-	u32	 x, y, xsize, ysize;
-	void 	(*wrefresh)(struct wdgt *); 
-	void 	(*periodic)(struct wdgt *);
+	struct 	list_head msg_l;
+	struct 	win *mwin;			
+	u8 	flags;				/* NO_YRESIZE, and for future use	*/
+	char	name[8];			/* debugging identification		*/
+	void 	*prv;				/* for use by widget itself		*/
+	void 	(*wrefresh)(struct wdgt *); 	/* refreshes widget			*/
+	void 	(*redraw)(struct wdgt *);	/* print output into the widget		*/
+	int	(*keyh)(struct wdgt *, int);	/* widget's key handler			*/
+	void 	(*periodic)(struct wdgt *);	/* to execute every step seconds	*/ 
+						/* message handler			*/
+	void 	*(*msgh)(struct wdgt *, int, struct wdgt *, void *);			
+	u32	x, y, xsize, ysize, vx, vy;	/* screen coords and offsets		*/
+	u32	pysize, pxsize;			/* pad real dimension			*/
+	void 	*wd;				/* screen window/pad descriptor		*/
+	int 	crsr;				/* current cursor position		*/
+	u8 	color;				/* fg and bg colors, CLR_* macros	*/
+	int 	nlines;				/* total nr of lines in output		*/
+	void 	*decor;				/* frame around widget, if any		*/
+//	u32	*crsrcache;			/* holds pid/uid indexed by crsr line	*/
 };	
-
-
-/*
- * Data associated with window are line numbered. If scrolling
- * inside window occurs then number of first displayed line changes
- * (first_line). 
- */
-struct window
-{
-	unsigned int rows;
-	unsigned int cols;
-	int offset;		/* nr of first displayed line	 	*/
-	int s_col;		/* display starts from this col		*/
-	int d_lines;		/* current total number of data lines 	*/
-	int cursor;		/* cursor position		 	*/
-	WINDOW *wd;		/* curses window pointer		*/
-	char *(*giveme_line) (int line);
-	int (*keys)(int c);	/* keys handling 			*/
-	void (*periodic)(void);	/* periodic updates of window's data 	*/
-	void (*redraw)(void);	/* refreshes window content		*/
-};
-
-struct user_t
-{
-        struct list_head head;
-        char name[UT_NAMESIZE + 1];     /* login name                   */
-        char tty[UT_LINESIZE + 1];      /* tty                          */
-        int pid;                        /* pid of login shell           */
-        char parent[16];                /* login shell parent's name	*/
-        char host[UT_HOSTSIZE + 1];     /* 'from' host                  */
-        int line;                       /* line number                  */
-};
-
-extern struct window users_list, proc_win, help_win, info_win;
-extern struct window *current;
 
 struct process
 {
         struct process **prev;
         struct process *next;
-        int line;
-	char state;
-	int uid;
-	struct proc_t *proc;
+        int 	line;
+	char 	state;
+	int 	uid;
+	struct 	proc_t *proc;
 };
 
 void err_exit(int , char *);
-
+void mwin_redraw_on(struct wdgt *);
+void mwin_refresh_on(struct wdgt *);
+void mwin_periodic_on(struct wdgt *);
+void mwin_msg_on(struct wdgt *);
+void mwin_need_redraw(struct wdgt *);
+void *wmsg_send(struct wdgt *, int, void *);
 /* screen.c */
 void scr_doupdate(void);
 void *scr_newwin(u32 ,u32 , u32 , u32);
 void scr_wdirty(struct wdgt *);
-int scr_addfstr(struct wdgt *, char *, u32 , u32 );
+int  scr_addfstr(struct wdgt *, char *, u32 , u32 );
+void scr_addstr(struct wdgt *, char *, u32);
+void scr_maddstr(struct wdgt *, char *, u32 , u32, u32);
+void scr_werase(struct wdgt *);
+int scr_keyh(struct wdgt *, int);
+void scr_ldeleted(struct wdgt *, int);
+void scr_linserted(struct wdgt *, int);
+void scr_output_start(struct wdgt *);
+void scr_output_end(struct wdgt *);
+void scr_wresize(struct wdgt *, u32 , u32 );
+void scr_attr_set(struct wdgt *, int );
+void scr_wrefresh(struct wdgt *w);
+void scr_decor_resize(struct wdgt *w);
+void scr_delline(struct wdgt *, u32 );
+void scr_box(struct wdgt *w, char *s, u8 c);
+
 /**************/
-
-
+void ulist_reg(struct wdgt *);
+void ptree_reg(struct wdgt *);
+void exti_reg(struct wdgt *);
+void users_init(void);
+void hlp_reg(struct wdgt *);
+void input_reg(struct wdgt *w);
+	
 
 /* user.c */
-void users_init(void);
-void check_wtmp(void);
-struct user_t *cursor_user(void);
+//void check_wtmp(void);
 unsigned int user_search(int);
-void users_list_refresh();
 char *proc_ucount(void);
 
 /* whowatch.c */
@@ -136,29 +151,11 @@ void show_tree(pid_t);
 void procwin_init(void);
 pid_t cursor_pid(void);
 unsigned int getprocbyname(int);
-void tree_title(struct user_t *);
-void do_signal(int, int);
+//void tree_title(struct user_t *);
 
 /* screen.c */								
-int below(int, struct window *);
-int above(int, struct window *);
-int outside(int, struct window *);
-void win_init(void);
-int print_line(struct window *w, char *s, int line, int virtual);
-int echo_line(struct window *w, char *s, int line);
-void cursor_on(struct window *w, int line);
-void cursor_off(struct window *w, int line);
 void curses_init();
 void curses_end();
-void print_help(void);
-void cursor_down(struct window *w);
-void cursor_up(struct window *w);
-void delete_line(struct window *w, int line);
-void page_down(struct window *);
-void page_up(struct window *);
-void key_home(struct window *);
-void key_end(struct window *);
-void to_line(int, struct window *);
 
 /* proctree.c */
 int update_tree();
@@ -174,6 +171,7 @@ char *get_w(int pid);
 void delete_tree_line(void *line);
 void get_state(struct process *p);
 char *count_idle(char *tty);
+int proc_pid_uid(u32);
 #ifndef HAVE_GETLOADAVG
 int proc_getloadavg(double [], int);
 #endif
@@ -188,43 +186,12 @@ void *get_empty(int, struct list_head *);
 int free_entry(void *, int, struct list_head *);
 void dolog(const char *, ...);
 
-/* subwin.c */
-int sub_keys(int);
-void subwin_init(void);
-void sub_periodic(void);
-void pad_refresh(void);
-void pad_draw(void);
-void pad_resize(void);
-void new_sub(void(*)(void *));
-char *plugin_load(char*);
-int can_draw(void);
-void sub_switch(void);
-
-
-/* input_box.c */
-int box_keys(int);
-void box_refresh(void);
-void box_resize(void);
-void input_box(char *, char *, char *,void (*)(char *));
-
-/* menu.c */
-void menu_refresh(void);
-int menu_keys(int);
-void menu_init(void);
-void menu_resize(void);
-
-/* info_box.c */
-void info_box(char *, char *);
-int info_box_keys(int);
-void info_refresh(void);
-void info_resize(void);
-
 /* proc_plugin.c */
-void builtin_proc_draw(void *);
-void builtin_sys_draw(void *);
+void eproc(void *);
+void esys(void *);
 
 /* user_plugin.c */
-void builtin_user_draw(void *);
+void euser(void *);
 
 /* search.c */
 void do_search(char *);
@@ -239,3 +206,4 @@ int getkey();
 
 /* term.c */
 void term_raw();
+

@@ -66,6 +66,12 @@ static __inline__ void list_del(struct list_head *entry)
 	__list_del(entry->prev, entry->next);
 }
 
+static __inline__ void LIST_DEL(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+	INIT_LIST_HEAD(entry);
+}
+
 static __inline__ int list_empty(struct list_head *head)
 {
 	return head->next == head;

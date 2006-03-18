@@ -285,37 +285,6 @@ int proc_pid_uid(u32 pid)
 	return s.st_uid;
 }
 
-/*
- * Get state and owner (effective uid) of a process
- */
-#ifdef HAVE_PROCESS_SYSCTL
-void get_state(struct process *p)
-{
-	struct procinfo pi;
-	/* state SSLEEP won't be marked in proc tree */
-	char s[] = "FR DZ";
-	get_info(p->proc->pid, &pi);
-	p->uid = pi.euid;
-	if(pi.stat == ' ') {
-		p->state = '?';
-		return;
-	}
-	p->state = s[pi.stat-1];
-}
-#else
-void get_state(struct process *p)
-{
-	char buf[256];
-        FILE *f;
-	p->state = '?';
-        snprintf(buf, sizeof buf, "/proc/%d/stat", p->proc->pid);
-        if(!(f = fopen(buf,"rt"))) return;
-        fscanf(f,"%*d %*s %c", &p->state);
- 	fclose(f);
-	if(p->state == 'S') p->state = ' ';
-}
-#endif
-
 int proc_getloadavg(double d[], int l)
 {
 #ifndef HAVE_GETLOADAVG

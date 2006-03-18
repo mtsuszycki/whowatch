@@ -100,30 +100,24 @@ static void crsr_off(struct wdgt *w, int line)
 	int i;
 DBG("DISABLING cursor on line %d", line);	
 	wattrset(CWND(w), A_NORMAL);
+//	mvwchgat(CWND(w), line, 0, w->xsize+1, A_NORMAL, 0, 0);	
 	for(i = 0; curs_buf[i]; i++)
 		waddch(CWND(w), curs_buf[i]);
 }
 
 static void crsr_on(struct wdgt *w, int line)
 {
-	chtype c;
-	int i;
-	WINDOW *wd = CWND(w);
-DBG("ENABLING in %s on line %d", w->name, line);	
-	wmove(wd, line, 0);
-	for(i = 0; i <= w->xsize; i++) { 
-		c = mvwinch(wd, line, i);
-		curs_buf[i] = c;
-	}
+	DBG("ENABLING in %s on line %d", w->name, line);	
+	mvwinchnstr(CWND(w), line, 0, curs_buf, w->xsize+1);
 	mvwchgat(CWND(w), line, 0, w->xsize+1, A_REVERSE, 0, 0);	
-	wtouchln(CWND(w), line, 1, 1);
-	wattrset(wd, A_NORMAL);
+	wattrset(CWND(w), A_NORMAL);
 }
 
 static void crsr_move(struct wdgt *w, int from, int to)
 {
 	crsr_off(w, from);
 	crsr_on(w, to);
+	w->crsr = to;
 }
 
 /*
@@ -165,6 +159,21 @@ void scr_output_end(struct wdgt *w)
 void scr_attr_set(struct wdgt *w, int n)
 {
 	wattrset(CWND(w), n);
+}
+
+void scr_clr_set(struct wdgt *w, int n)
+{
+	wattrset(CWND(w), COLOR_PAIR(n));
+}
+
+void scr_crsr_jmp(struct wdgt *w, int l)
+{
+//	int jmp = l - w->crsr;
+	int size =  w->ysize - w->y - 1;
+	crsr_move(w, w->crsr, l);
+	//DBG("size %d, crsr %d", size, w->crsr);	
+	if(l >= w->vy && l < w->vy + size) return;
+	w->vy = w->crsr - size;
 }
 
 void scr_maddstr(struct wdgt *w, char *s, u32 y, u32 x, u32 n)
@@ -264,10 +273,10 @@ static int kbd_page_up(struct wdgt *w)
 	if(left > 0) w->vy -= n;
 	else {
 		crsr_move(w, w->crsr, 0);
-		return w->crsr = 0;
+		return  0;
 	}
 	crsr_move(w, w->crsr, w->crsr-n);
-	w->crsr -= n;
+//	w->crsr -= n;
 	return 0;
 }	
 
@@ -281,7 +290,7 @@ static int kbd_up(struct wdgt *w)
 		return 0;
 	}
 	if(w->vy && crsr == w->vy) w->vy--;
-	if(crsr > 0) crsr_move(w, w->crsr, --w->crsr);
+	if(crsr > 0) crsr_move(w, w->crsr, w->crsr-1);
 	return 0;
 }
 
@@ -305,8 +314,7 @@ static int kbd_down(struct wdgt *w)
 		else return 0;
 	}
 	/* cursor enabled and not reached the last line yet */
-	if(w->crsr < w->nlines) crsr_move(w, w->crsr, ++w->crsr);
-
+	if(w->crsr < w->nlines) crsr_move(w, w->crsr, w->crsr+1);
 	return 0;
 }
 
@@ -318,13 +326,10 @@ static int kbd_page_down(struct wdgt *w)
 	if(nleft > 0) w->vy += n;
 	else {
 		crsr_move(w, w->crsr, w->nlines);
-		w->crsr = w->nlines;
 		return 0;
 	}
-	if(w->crsr != -1) {
+	if(w->crsr != -1) 
 		crsr_move(w, w->crsr, w->crsr+n);
-		w->crsr += n;
-	}
 	return 0;
 }
 
@@ -344,7 +349,6 @@ static int kbd_end(struct wdgt *w)
 	
 	if(w->crsr < w->nlines) {
 		crsr_move(w, w->crsr, w->crsr+nleft);
-		w->crsr += nleft;
 		return KEY_HANDLED;
 	}
 	return KEY_SKIPPED;

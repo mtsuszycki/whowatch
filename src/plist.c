@@ -2,21 +2,39 @@
 #include "proctree.h"
 
 //static char *hlp = "\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[K]ILL";
-static char *hlp_init_pid = "\001[ENT]users [d]etails [o]owner [s]ysinfo [^k]ILL [r]edraw";
-static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]owner [s]ysinfo [^k]ILL [r]edraw";
+static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [^k]ILL [/]search";
+static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [^k]ILL [/]search";
+
+static LIST_HEAD(plist);
 
 static struct process *begin;
 static pid_t tree_root = 1;
 static unsigned int show_owner;
+static struct __pstat {
+	u32	nr, rn, sl, st, zm;
+} pstat;
 
+static void pstat_update(struct process *p, int n)
+{
+	pstat.nr += n;
+	if(!p->proc) return; 
+	switch(p->proc->state) {
+		case 'S': pstat.sl += n; break;
+		case 'R': pstat.rn += n; break;
+		case 'Z': pstat.zm += n; break;
+		case 'D': pstat.st += n; break;
+	}
+}
+	
 static void proc_del(struct process *p)
 {						
 	*p->prev=p->next;				
 	if (p->next) p->next->prev = p->prev;
+
+//	LIST_DEL(&p->plist_l);	
+	
 	if (p->proc) p->proc->priv = 0;	
 	free(p);
-//	proc_win.d_lines--;					
-//	allocated--;					
 }
 
 static void mark_del(void *vp)
@@ -26,7 +44,7 @@ static void mark_del(void *vp)
 	q = p->proc;
 	for(q = q->child; q; q = q->broth.nx)
 		if (q->priv) mark_del(q->priv);
-
+	pstat_update(p, -1);
 	p->proc->priv = 0;	
 	p->proc = 0;
 }
@@ -36,8 +54,18 @@ static inline int is_marked(struct process *p)
 	return p->proc?0:1;
 }
 
-static void clear_list()
+static void clear_list(void)
 {
+	/*struct list_head *h;
+	struct process *p;
+
+	h = plist.next;	      
+	while(h != &plist) {
+		h = h->next;
+		p = list_entry(h, struct process, plist_l);
+		proc_del(p);
+	}*/
+		
 	struct process *p, *q;
 	for(p = begin; p; p = q){
 		q = p->next;
@@ -67,6 +95,7 @@ static void synchronize(struct wdgt *w)
 		z->line = l++;
 		p->priv = z;
 		z->proc = p;
+		pstat_update(z, 1);
 		if (*current){
 			z->next = *current;
 			(*current)->prev = &z->next;
@@ -111,58 +140,71 @@ static char get_state_color(char state)
 
 static char *prepare_line(struct wdgt *w, struct process *p)
 {
-	char *tree;
+	char *tree, state = p->proc->state;
+	
 	if (!p) return 0;
 	tree = tree_string(tree_root, p->proc);
-	get_state(p);
+	if(state == 'S') state = ' ';
 	if(show_owner) 
 		snprintf(w->mwin->gbuf, w->mwin->gbsize ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
-			p->proc->pid, get_state_color(p->state), 
-			p->state, get_owner_name(proc_pid_uid(p->proc->pid)), tree, 
+			p->proc->pid, get_state_color(state), 
+			state, get_owner_name(proc_pid_uid(p->proc->pid)), tree, 
 			get_cmdline(p->proc->pid));
 	 else 
-		snprintf(w->mwin->gbuf, w->mwin->gbsize,"\x3%5d %c%c \x2%s \x3%s",
-			p->proc->pid, get_state_color(p->state), 
-			p->state, tree, get_cmdline(p->proc->pid));
+		snprintf(w->mwin->gbuf, w->mwin->gbsize,"\x3%d %5d %c%c \x2%s \x3%s",
+			p->line, p->proc->pid, get_state_color(state), 
+			state, tree, get_cmdline(p->proc->pid));
 		
 	return w->mwin->gbuf;
 }
 
 /*
  * Find process by its command line. 
- * Processes that have line number (data line, not screen)
- * lower than second argument are skipped. Called by do_search.
+ * 't' is type of operation:
+ *  0 - search below cursor only
+ *  1 - below but including cursor line
+ *  2 - from the beginning
  */
-unsigned int getprocbyname(int l)
+static int  getprocbyname(struct wdgt *w, int t)
 {
 	struct process *p;
 	char *tmp, buf[8];
+	int l = w->crsr;
 	for(p = begin; p ; p = p->next){
 		if(!p->proc) continue;
-		if(p->line <= l) continue;
+		if(!t && p->line <= l) continue;
+		if(t == 1 && p->line < l) continue;
 		/* try the pid first */
 		snprintf(buf, sizeof buf, "%d", p->proc->pid);
-		if(reg_match(buf)) return p->line;
+		if(reg_match(buf)) goto found; //return p->line;
 		/* next process owner */
 		if(show_owner && reg_match(get_owner_name(p->uid))) 
-			return p->line;
+			goto found; //return p->line;
 		tmp = get_cmdline(p->proc->pid);
-		if(reg_match(tmp)) return p->line;
+		if(reg_match(tmp)) goto found; // return p->line;
 	}
-	return -1;
+	return 2;
+found:
+	scr_crsr_jmp(w, p->line);
+	return 1;
 }
 /*
-void tree_title(struct user_t *u)
+ * Send current processes information to info widget
+ */
+static void ptreeinfo(struct wdgt *w, int i)
 {
-	//char buf[64];
-return;	
-//	if(!u) snprintf(buf, sizeof buf, "%d processes", proc_win.d_lines);
-//	else snprintf(buf, sizeof buf, "%-14.14s %-9.9s %-6.6s %s",
-//               	u->parent, u->name, u->tty, u->host);
-//	wattrset(info_win.wd, A_BOLD);
-  //      echo_line(&info_win, buf, 1);
+	int n, size = w->mwin->gbsize;
+	char *buf = w->mwin->gbuf;
+	if(!i) {
+		wmsg_send(w, MSND_INFO, 0);
+		return;
+	}
+	n = snprintf(buf, size, "%u tasks: %u running, %u sleeping",
+			pstat.nr, pstat.rn, pstat.sl);
+	if(pstat.st) n += snprintf(buf+n, size-n,", %u stopped", pstat.st);
+	if(pstat.zm) n += snprintf(buf+n, size-n,", %u zombie", pstat.zm);
+	wmsg_send(w, MSND_INFO, buf);
 }
-*/
 
 static void draw_tree(struct wdgt *w)
 {
@@ -178,24 +220,6 @@ static void draw_tree(struct wdgt *w)
 		scr_addfstr(w, prepare_line(w, p), p->line, 0);
 	}
 	scr_output_end(w);
-}
-
-static void tree_periodic(void)
-{
-	update_tree(mark_del);
-	//delete_tree_lines();
-	//synchronize();
-//	draw_tree();
-}
-void show_tree(pid_t pid)
-{
-//        print_help(state);
-	//proc_win.offset = proc_win.cursor = 0;
-	//tree_root = INIT_PID;
-//	if(pid > 0) tree_root = pid; 
-        tree_periodic();
-//        tree_title(pid);
-//	tree_title(0); // change it!
 }
 
 /*
@@ -215,12 +239,12 @@ static void ptree_periodic(struct wdgt *w)
 	update_tree(mark_del);
 	delete_tree_lines(w);
 	synchronize(w);
+	ptreeinfo(w, 1);
 }
 
 static void ptree_redraw(struct wdgt *w)
 {
 	DBG("--- redraw tree");
-	//tree_root = INIT_PID;
 	scr_werase(w);
 	draw_tree(w);
 }
@@ -251,11 +275,12 @@ static void *pmsgh(struct wdgt *w, int type, struct wdgt *s, void *d)
 {
 	static u32 pid;
 	switch(type) {
-		case MWANT_DSOURCE: return eproc;
-		case MWANT_CRSR_VAL: pid = crsr_pid(w->crsr); return &pid;
-		case MALL_CRSR_REG: w->flags |= WDGT_CRSR_SND; 
-				    DBG("%s wants every cursor change", s->name);break;
-		case MALL_CRSR_UNREG: w->flags &= ~ WDGT_CRSR_SND; break;
+		case MWANT_CRSR_VAL:
+			pid = crsr_pid(w->crsr);
+			return &pid;
+		case MSND_SEARCH:
+			return getprocbyname(w, (u32)d);
+			break;
 	}
 	return 0;
 }
@@ -286,6 +311,8 @@ static void ptree_hide(struct wdgt *w)
 	clear_list();
 	w->periodic = 0;
 	w->msgh = 0;
+	ptreeinfo(w, 0);
+	bzero(&pstat, sizeof pstat);
 }	
 
 static void root_change(struct wdgt *w)
@@ -321,16 +348,6 @@ static void pswitch(struct wdgt *w, int k, int p)
 	}	
 }
 
-static void crsr_send(struct wdgt *w)
-{
-	static u32 pid;
-	
-	if(!(w->flags & WDGT_CRSR_SND)) return;
-	if(!(pid = crsr_pid(w->crsr))) return;
-	DBG("sending current pid %d", pid);
-	wmsg_send(w, MCUR_CRSR, &pid);
-}
-
 static int pkeyh(struct wdgt *w, int key)
 {
         int ret = KEY_HANDLED;
@@ -357,7 +374,6 @@ static int pkeyh(struct wdgt *w, int key)
 		case KBD_PAGE_UP:
 		case KBD_PAGE_DOWN: */
 		default:	 ret = scr_keyh(w, key);
-			 if(ret == KEY_HANDLED) crsr_send(w);
 	}
         return ret;
 }

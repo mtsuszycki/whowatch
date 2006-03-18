@@ -15,6 +15,7 @@
 #include <curses.h>
 #include <ctype.h>
 #include <assert.h>
+#include <regex.h>
 #include "list.h"
 #include "kbd.h"
 #include "var.h"
@@ -43,11 +44,23 @@
 #define MALL_CRSR_REG	5  /* wdgt wants to receive cursor changes */
 #define MALL_CRSR_UNREG 6  /* doesn't want to receive it anymore   */
 #define MSND_ESOURCE	7
+#define MSND_INFO	8
+#define MSND_SEARCH	9
+#define MSND_SEARCH_END	10
 
 #define CWND(w)		((WINDOW*)(w->wd))	/* ncurses window descriptor	*/
 
 #define INIT_PID		1
 #define real_line_nr(x,y)	((x) - (y)->offset)
+
+/* wdgts colors - correspond to curses COLOR_PAIR(n) 	*/
+#define CLR_WHITE_BLACK		3
+#define CLR_BLACK_CYAN		8
+#define CLR_CYAN_BLACK		1
+#define CLR_RED_CYAN		7
+#define CLR_BLACK_WHITE		9
+
+
 
 enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K,                      
                 CTRL_I, PG_DOWN, PG_UP, HOME, END, BACKSPACE, TAB };
@@ -64,7 +77,7 @@ struct win {
         u32     gbsize;
 	void	*(*cval)(void);	/* returns current cursor value	(pid/name) */
         u8      need_redraw;	/* immediate redraw needed for all wdgts*/
-	struct wdgt *mwdgt;
+//	struct wdgt *mwdgt;
 };
 
 struct wdgt {
@@ -94,8 +107,8 @@ struct process
 {
         struct process **prev;
         struct process *next;
+	struct list_head plist_l;
         int 	line;
-	char 	state;
 	int 	uid;
 	struct 	proc_t *proc;
 };
@@ -122,6 +135,7 @@ void scr_output_start(struct wdgt *);
 void scr_output_end(struct wdgt *);
 void scr_wresize(struct wdgt *, u32 , u32 );
 void scr_attr_set(struct wdgt *, int );
+void scr_clr_set(struct wdgt *, int );
 void scr_wrefresh(struct wdgt *w);
 void scr_decor_resize(struct wdgt *w);
 void scr_delline(struct wdgt *, u32 );
@@ -138,7 +152,6 @@ void input_reg(struct wdgt *w);
 
 /* user.c */
 //void check_wtmp(void);
-unsigned int user_search(int);
 char *proc_ucount(void);
 
 /* whowatch.c */
@@ -147,10 +160,8 @@ void prg_exit(char *);
 void send_signal(int, pid_t);
 
 /* process.c */
-void show_tree(pid_t);
 void procwin_init(void);
 pid_t cursor_pid(void);
-unsigned int getprocbyname(int);
 //void tree_title(struct user_t *);
 
 /* screen.c */								
@@ -169,7 +180,6 @@ int get_ppid(int);
 char *get_name(int);
 char *get_w(int pid);
 void delete_tree_line(void *line);
-void get_state(struct process *p);
 char *count_idle(char *tty);
 int proc_pid_uid(u32);
 #ifndef HAVE_GETLOADAVG
@@ -194,7 +204,6 @@ void esys(void *);
 void euser(void *);
 
 /* search.c */
-void do_search(char *);
 int reg_match(const char *);
 
 /* menu_hooks.c */

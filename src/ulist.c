@@ -157,7 +157,7 @@ char *proc_ucount(void)
         static char buf[64];
 
 	int other = nusers - prot_tab[LOCAL].nr - prot_tab[TELNET].nr - prot_tab[SSH].nr;
-        snprintf(buf, sizeof buf - 1,"\x1%d users: (%d local, %d telnet, %d ssh, %d other)",
+        snprintf(buf, sizeof buf - 1,"\x1%d users: %d local, %d telnet, %d ssh, %d other\x3",
    		nusers, prot_tab[LOCAL].nr, prot_tab[TELNET].nr, prot_tab[SSH].nr, other);
 	return buf;
 }
@@ -242,6 +242,33 @@ static void *cval(void)
 	return 0;
 }
 
+/* 
+ * Needed for search function. If parent, name, tty, host or command line
+ * matches then returns line number of this user.
+ */
+static int user_search(struct wdgt *w, int t)
+{
+	struct user_t *u;
+	struct list_head *h;
+	int l = w->crsr;
+	
+	list_for_each(h, &users_l) {
+		u = list_entry(h, struct user_t, head);
+		if(!t && u->line <= l) continue;
+		if(t == 1 && u->line < l) continue;
+		if(reg_match(u->parent)) goto found;
+		if(reg_match(u->name)) goto found;
+		if(reg_match(u->tty)) goto found;
+		if(reg_match(u->host)) goto found;
+		if(reg_match(toggle?count_idle(u->tty):get_w(u->pid))) 
+			goto found;
+	}
+	return 2;
+found:
+	scr_crsr_jmp(w, u->line);
+	return 1;
+}
+
 static void *umsgh(struct wdgt *w, int type, struct wdgt *s, void *d)
 {	
 	struct user_t *u;
@@ -259,7 +286,11 @@ DBG("ulist responded to type %d", type);
 		case MWANT_CRSR_VAL: u = cursor_user(w->crsr);
 				if(u) return u->name;
 				else return "No user found";
+		case MSND_SEARCH:
+				return user_search(w, (u32)d);
+				break;
 	}
+	
 	return 0;
 }
 
@@ -325,27 +356,5 @@ void ulist_reg(struct wdgt *w)
 	w->mwin->cval = cval;
 	mwin_msg_on(w);
 	self = w;
-}
-
-/* 
- * Needed for search function. If parent, name, tty, host or command line
- * matches then returns line number of this user.
- */
-unsigned int user_search(int line)
-{
-	struct user_t *u;
-	struct list_head *h;
-	
-	list_for_each(h, &users_l) {
-		u = list_entry(h, struct user_t, head);
-		if(u->line < line) continue;
-		if(reg_match(u->parent)) return u->line;
-		if(reg_match(u->name)) return u->line;
-		if(reg_match(u->tty)) return u->line;
-		if(reg_match(u->host)) return u->line;
-		if(reg_match(toggle?count_idle(u->tty):get_w(u->pid))) 
-			return u->line;
-	}
-	return -1;
 }
 

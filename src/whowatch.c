@@ -3,14 +3,7 @@
 #include "whowatch.h"
 #include "config.h"
 
-#define TIMEOUT		 	3
-/* wdgts colors - correspond to curses COLOR_PAIR(n) 	*/
-#define CLR_WHITE_BLACK		3
-#define CLR_BLACK_CYAN		8
-#define CLR_CYAN_BLACK		1
-#define CLR_RED_CYAN		7
-#define CLR_BLACK_WHITE		9
-
+#define TIMEOUT		 	6000
 /* Main window that holds all widgets and manages them 	*/
 static struct win win;
 static struct win *mwin = &win;
@@ -57,7 +50,7 @@ void mwin_redraw(int f)
 }
 
 char *_msg[] = { "want_dsource", "want_crsr_val", "cur_crsr", "cur_hlp", "want_upid", 
-	"crsr_reg", "crsr_unreg", "snd_esource" };
+	"crsr_reg", "crsr_unreg", "snd_esource", "snd_info", "snd_search", "snd_search_end"};
 
 void *wmsg_send(struct wdgt *sndr, int type, void *data)
 {
@@ -290,10 +283,8 @@ static struct wdgt *wdgt_new(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32
 	w->vy = w->vx = 0;
 	if(!pysize) pysize = ysize - y + 1;
 	if(!pxsize) pxsize = xsize - x + 1;
-	if(!wd_create(w, ysize, xsize, pysize, pxsize, c)) {
-		free(w);
-		return 0;
-	}
+	if(!wd_create(w, ysize, xsize, pysize, pxsize, c)) 
+		err_exit(1, "Cannot create widget");
 	DBG("New '%s', %d, %d, %d, %d, %d, %d", w->name, w->y, w->x, w->ysize, w->xsize, w->pysize, w->pxsize);
 	/* disable cursor by default */
 	w->crsr = -1;
@@ -301,42 +292,12 @@ static struct wdgt *wdgt_new(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32
 	return w;
 }
 
-static char *get_load()
-{
-        double d[3] = { 0, 0, 0};
-        static char buf[32];
-	
-        if(proc_getloadavg(d, 3) == -1) return "";
-        snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
-        return buf;
-}
-
-static void irefresh(struct wdgt *w)
-{	
-	pnoutrefresh(w->wd, 0, 0, 0, 0, w->ysize, w->xsize);
-}
-
-static void info_periodic(struct wdgt *w)
-{
-	char *s;
-	int n;
-	s = get_load();
-	n = strlen(s);
-	scr_werase(w);
-	scr_addfstr(w, proc_ucount(), 0, 0);
-	scr_maddstr(w, s, 0, w->xsize - n + 1, n);
-//	s = wmsg_send(w, 0,  0);
-//	scr_addstr(w, s, 0, w->xsize - n + 1, n);
-}
-
 static void info_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
 {
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "info", c);
-	if(!w) return;
 	MWADD_TO_LIST(w, msg);
-	w->periodic = info_periodic;
-	w->wrefresh = irefresh;
+	info_reg(w);
 	w->flags |= WDGT_NO_YRESIZE;
 }
 
@@ -344,7 +305,6 @@ static void hlp_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize,
 {
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "help", c);
-	if(!w) return;
 	MWADD_TO_LIST(w, msg);
 	w->flags |= WDGT_NO_YRESIZE;
 	hlp_reg(w);
@@ -355,11 +315,8 @@ static void ulist_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsiz
 {
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "ulist", c);
-	if(!w) return;
 	/* enable cursor for this widget */
 	w->crsr = 0;
-	mwin->mwdgt = w;
-	
 	ulist_reg(w);
 }
 
@@ -367,7 +324,6 @@ static void ptree_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsiz
 {
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "ptree", c);
-	if(!w) return;
 	/* enable cursor for this widget */
 	w->crsr = 0;
 	ptree_reg(w);
@@ -378,14 +334,14 @@ static void exti_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize
 {
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "exti", c);
-	if(!w) return;
 	exti_reg(w);
 }	
 static void input_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
 {	
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "input", c);
-	if(!w) return;
+	MWADD_TO_LIST(w, msg);
+	w->flags |= WDGT_NO_YRESIZE;
 	input_reg(w);
 }
 
@@ -406,13 +362,12 @@ static void wdgts_create(int sy, int sx)
 	 *  upper left corner: [y,x], lower right [y,x], 
 	 * real size of the pad  [y,x] (numbering always starts from 0) 
 	 */
-	info_wdgt(0, 0, 1, sx, 1, sx, CLR_CYAN_BLACK);	
+	info_wdgt(0, 0, 1, sx, 1, sx, CLR_WHITE_BLACK);//CLR_CYAN_BLACK);	
 	hlp_wdgt(sy, 0, sy, sx, sy, sx, CLR_CYAN_BLACK);	
-	ulist_wdgt(2, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK); 
-	ptree_wdgt(2, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK);
+	ulist_wdgt(3, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK); 
+	ptree_wdgt(3, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK);
 	exti_wdgt(sy/4, sx/5, sy-sy/4, sx-sx/5, 256, 128, CLR_BLACK_CYAN);
-	//input_wdgt(sy/3, sx/5, sy-sy/3, sx-sx/5, 0, 0, CLR_BLACK_WHITE);
-	input_wdgt(sy*2/5, sx/5, sy-sy*2/5, sx-sx/5, 0, 0, CLR_BLACK_WHITE);
+	input_wdgt(sy, 0, sy, sx, 0, 0, CLR_BLACK_WHITE);
 }
 
 static void scrlib_init(void)

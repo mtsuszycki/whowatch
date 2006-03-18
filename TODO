@@ -4,7 +4,6 @@
 - call clear_list() in process.c?
 - if exti not full filled with some data then it blinks
   if scrolling underlaying window (ulist/plist)
-- add need_redraw(w) valid for caller only, not for all wdgts
 - after resize call scr_crsr_resize to move crsr if necessary
 - clear line in ulist coz after cmd changes for something shorter you can see
    old string

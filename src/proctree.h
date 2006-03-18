@@ -9,6 +9,7 @@ struct plist {
 
 struct proc_t {
 	int pid;
+	char   state;
 	struct proc_t *parent;
 	struct proc_t *child;
 	struct plist mlist;

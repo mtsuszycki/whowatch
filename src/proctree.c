@@ -41,6 +41,7 @@ int get_all_info(struct kinfo_proc **);
 #endif 
 
 struct pinfo {
+	char state;
 	int pid;
 	int ppid;
 };
@@ -50,7 +51,7 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 {
 	static char name[32] = PROCDIR "/";
 	struct dirent* e;
-
+	i->state = '?';
 	for(;;) {
 		int f,n;
 		char buf[64],*p;
@@ -58,6 +59,7 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 		e=readdir(d);
 		if(!e) return 0;
 		if(!isdigit(e->d_name[0])) continue;
+		i->state = '?';
 		sprintf(name+sizeof PROCDIR,"%s/stat",e->d_name);
 		f=open(name,0);
 		if(!f) continue;
@@ -66,6 +68,7 @@ static inline int get_pinfo(struct pinfo* i,DIR* d)
 		if(n<0) continue;
 		buf[n]=0;
 		p = strrchr(buf+4,')') + 4;
+		i->state = *(p-2);
 		i->ppid = atoi(p);
 		i->pid = atoi(buf);
 		if(i->pid<=0) continue;
@@ -110,7 +113,7 @@ static inline void remove_proc(struct proc_t* p)
 	num_proc--;
 }
 
-static inline struct proc_t* new_proc(int n)
+static inline struct proc_t* new_proc(int n, char state)
 {
 	struct proc_t* p = cache;
 	cache = 0;
@@ -118,24 +121,27 @@ static inline struct proc_t* new_proc(int n)
 		p = (struct proc_t*) malloc(sizeof *p);
 	memset(p,0,sizeof *p);
 	p->pid = n;
-
+	p->state = state;	
+	
 	list_add(hash_table[hash_fun(n)], p, hash);
 	num_proc++;
 
 	return p;
 }
 
-static struct proc_t *validate_proc(int pid)
+static struct proc_t *validate_proc(int pid, char state)
 {
 	struct proc_t* p;
 
 	p = find_by_pid(pid);
-	if(pid <= 1)
+	if(pid <= 1) {
+		p->state = state;
 		return p;
+	}	
 	if(p)
 		list_del(p,mlist);
 	else
-		p = new_proc(pid);
+		p = new_proc(pid, state);
 	list_add(main_list,p,mlist);
 	return p;
 }
@@ -166,20 +172,19 @@ int update_tree(void del(void*))
 #ifdef HAVE_PROCESS_SYSCTL
 	el = get_all_info(&pi);
 	for(i = 0; i < el; i++) {
-		p = validate_proc(pi[i].kp_proc.p_pid);
-		q = validate_proc(pi[i].kp_eproc.e_ppid);
+		p = validate_proc(pi[i].kp_proc.p_pid, ' ');
+		q = validate_proc(pi[i].kp_eproc.e_ppid, ' ');
 #else
 
 	d=opendir(PROCDIR);
 	if(d<0) return -1;
 
 	while( get_pinfo(&info,d) ) {
-		p = validate_proc(info.pid);
-		q = validate_proc(info.ppid);
+		p = validate_proc(info.pid, info.state);
+		q = validate_proc(info.ppid, info.state);
 #endif
 		if(p->parent != q){
 			if(p->priv) del(p->priv);
-
 			change_parent(p,q);
 		}
 	}

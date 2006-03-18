@@ -128,21 +128,6 @@ int proc_pid_uid(u32 pid)
 	return s.st_uid;
 }
 
-/*
- * Get state and owner (effective uid) of a process
- */
-void get_state(struct process *p)
-{
-	char buf[32];
-        FILE *f;
-	p->state = '?';
-        snprintf(buf, sizeof buf, "/proc/%d/stat", p->proc->pid);
-        if(!(f = fopen(buf,"rt"))) return;
-        fscanf(f,"%*d %*s %c", &p->state);
-	fclose(f);
-	if(p->state == 'S') p->state = ' ';
-}
-
 int proc_getloadavg(double d[], int l)
 {
 #ifndef HAVE_GETLOADAVG

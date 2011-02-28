@@ -12,7 +12,7 @@
 #define LOGIN		1
 #define LOGOUT		-1		
 
-#ifdef HAVE_UT_NAME
+#ifdef HAVE_STRUCT_UTMP_UT_NAME
 #define ut_user ut_name
 #endif
 
@@ -57,7 +57,7 @@ void u_count(char *name, int p)
 	int i;
 	struct prot_t *t;
 	users_list.d_lines += p;
-dolog(__FUNCTION__": dlines %d\n", users_list.d_lines);	
+	dolog("%s : dlines %d\n", __FUNCTION__, users_list.d_lines);	
 	for(i = 0; i < sizeof prot_tab/sizeof(struct prot_t); i++){
 		t = &prot_tab[i];
 		if(strncmp(t->s, name, strlen(t->s))) continue;
@@ -90,7 +90,7 @@ struct user_t *alloc_user(struct utmp *entry)
 	strncpy(u->name, entry->ut_user, UT_NAMESIZE);
 	strncpy(u->tty, entry->ut_line, UT_LINESIZE);
 	strncpy(u->host, entry->ut_host, UT_HOSTSIZE);
-#ifdef HAVE_UTPID		
+#ifdef HAVE_STRUCT_UTMP_UT_PID
 	u->pid = entry->ut_pid;
 #else
 	u->pid = get_login_pid(u->tty);
@@ -151,7 +151,7 @@ static void read_utmp(void)
 	}
 	while((i = read(fd, &entry,sizeof entry)) > 0) {
 		if(i != sizeof entry) errx(1, "Error reading " UTMP_FILE );
-#ifdef HAVE_USER_PROCESS
+#ifdef HAVE_DECL_USER_PROCESS
 		if(entry.ut_type != USER_PROCESS) continue;
 #else
 		if(!entry.ut_name[0]) continue;
@@ -217,10 +217,10 @@ void check_wtmp(void)
 	while((i = read(wtmp_fd, &entry, sizeof entry)) > 0){ 
 		if (i < sizeof entry){
 			curses_end();
-			errx(1, __FUNCTION__ ": error reading " WTMP_FILE );
+			errx(1, "%s: error reading %s", __FUNCTION__, WTMP_FILE );
 		}
 		/* user just logged in */
-#ifdef HAVE_USER_PROCESS
+#ifdef HAVE_DECL_USER_PROCESS
 		if(entry.ut_type == USER_PROCESS) {
 #else
 		if(entry.ut_user[0]) {
@@ -229,7 +229,7 @@ void check_wtmp(void)
 			changed = 1;
 			continue;
 		}
-#ifdef HAVE_DEAD_PROCESS
+#ifdef HAVE_DECL_DEAD_PROCESS
 		if(entry.ut_type != DEAD_PROCESS) continue;
 #else
 //		if(entry.ut_line[0]) continue;
@@ -328,11 +328,11 @@ static void periodic(void)
 void users_init(void)
 {
         if((wtmp_fd = open(WTMP_FILE ,O_RDONLY)) == -1)
-                errx(1, __FUNCTION__ ": cannot open " WTMP_FILE ": %s",
-                        strerror(errno));
+                errx(1, "%s: cannot open %s, %s",
+			__FUNCTION__, WTMP_FILE, strerror(errno));
         if(lseek(wtmp_fd, 0, SEEK_END) == -1)
-                errx(1, __FUNCTION__  ": cannot seek in " WTMP_FILE ": %s",
-			strerror(errno));
+                errx(1, "%s: cannot seek in %s, %s",
+			__FUNCTION__, WTMP_FILE, strerror(errno));
 	users_list.giveme_line = users_list_giveline;
 	users_list.keys = ulist_key;
 	users_list.periodic = periodic;

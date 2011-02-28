@@ -5,6 +5,7 @@
  * gives better performance)
  */
 #include <err.h>
+#include <time.h>
 #include "whowatch.h"
 #include "proctree.h"
 #include "config.h"
@@ -128,21 +129,28 @@ char *get_name(int pid)
  */
 void get_state(struct process *p)
 {
-	char buf[64];
-	struct stat s;
-	char state;
-        FILE *f;
-        snprintf(buf, sizeof buf - 6, "/proc/%d", p->proc->pid);
-	p->uid = -1;
-	if (stat(buf, &s) >= 0) p->uid = s.st_uid;  
-	strcat(buf,"/stat");
-        if (!(f = fopen(buf,"rt"))){
-               	p->state = '?';
-		return;
-	}
-        fscanf(f,"%*d %*s %c", &state);
-	fclose(f);
-	p->state = state=='S'?' ':state;
+  char buf[64];
+  struct stat s;
+  char state;
+  FILE *f;
+  
+  p->uid = -1;
+  snprintf(buf, sizeof buf - 6, "/proc/%d", p->proc->pid);
+  if (stat(buf, &s) >= 0) p->uid = s.st_uid;  
+
+  p->state = '?';
+  strcat(buf,"/stat");
+
+  if (!(f = fopen(buf,"rt")))
+    return;
+
+  if (fscanf(f,"%*d %*s %c", &state) != 1) {
+    fclose(f);
+    return;
+  }
+
+  fclose(f);
+  p->state = ((state == 'S') ? ' ' : state);
 }
 
 #ifndef HAVE_GETLOADAVG

@@ -9,7 +9,7 @@ static char *prev_search;
 
 void  m_exit(void)
 {
-dolog(__FUNCTION__":entering\n");
+	dolog("%s: entering\n", __FUNCTION__);
 	prg_exit("");
 }	
 void m_details(void)

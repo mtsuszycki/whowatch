@@ -25,5 +25,3 @@ void builtin_user_draw(void *n)
 	title("SHELL: "); println("%s", pw->pw_shell);
 	title("GECOS: "); println("%s", pw->pw_gecos);
 }
-
-	

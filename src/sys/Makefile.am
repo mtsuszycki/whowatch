@@ -1,0 +1,2 @@
+SUBDIRS = $(SYSTEM)
+DIST_SUBDIRS = bsd linux

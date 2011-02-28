@@ -3,9 +3,10 @@
 #include <sys/sysctl.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #endif
 
-#ifdef __FreeBSD__
+#ifdef HAVE_SYS_USER_H
 #include <sys/user.h>
 #endif
 

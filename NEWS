@@ -1,0 +1,6 @@
+version 1.6.1
+-------------
+- imported source from the debian package (1.6.0a)
+- applied debian patches
+- should now compile out of the box on linux
+- note that the BSD code is out of date and that it won't compile on FreeBSD

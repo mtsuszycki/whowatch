@@ -37,7 +37,10 @@ static struct item_t *cur_item;
 static unsigned short item_cursor;
 
 #define DUMMY_HEAD	{0, 0}
-static char *submenus[] = { "File", "View", "Process", "Users",  "Help" };
+static char *submenus[] = {
+  "File", "View", "Process", "Users",  "Help", NULL
+};
+
 struct item_bind_t  {
 	unsigned short submenu;		/* index in the submenus table */
 	struct item_t item;
@@ -74,7 +77,7 @@ static struct submenu_t *add_submenu(char *s)
 	static int pos = TITLE_START;
 	
 	t = calloc(1, sizeof *t);
-	if(!t) prg_exit(__FUNCTION__": cannot allocate memory.");
+	if(!t) prg_exit("add_submenu(): cannot allocate memory.");
 	t->title = s;
 	INIT_LIST_HEAD(&t->items);
 	list_add(&t->l_menu, &menu.submenus);
@@ -101,11 +104,11 @@ static void add_item(char *title, struct item_t *i)
 	static unsigned short longest;
 	int len = strlen(i->name);// + strlen(i->descr) + 1;
 	if(!(t = find_submenu(title))) {
-//dolog(__FUNCTION__ ": cannot find title %s\n", title);
+	// dolog("%s: cannot find title %s\n", __FUNCTION__, title);
 		return;
 	}
 	if(len > longest) longest = len;
-//dolog(__FUNCTION__": %d %d %d\n", longest, strlen(i->descr), t->cols);	
+	// dolog("%s: %d %d %d\n", __FUNCTION__, longest, strlen(i->descr), t->cols);	
 	if(longest + strlen(i->descr) + 3 > t->cols) 
 		t->cols = 3 + longest + strlen(i->descr);
 	if(!t->rows) t->rows = 3; /* make space for a border line */
@@ -193,7 +196,7 @@ static void menu_create(void)
 {
 	set_size();
 	menu.wd = newpad(1, menu.cols);
-	if(!menu.wd) prg_exit(__FUNCTION__ ": Cannot allocate memory.");
+	if(!menu.wd) prg_exit("menu_create(): Cannot allocate memory.");
 	wbkgd(menu.wd, COLOR_PAIR(9));
 //	overwrite(info_win.wd, menu.wd);
 	werase(menu.wd);
@@ -276,7 +279,7 @@ int menu_keys(int key)
 		return 1;
 	}
 	if(!menu.wd) return 0;
-dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);	
+	dolog("%s: submenu_wd %p\n", __FUNCTION__, submenu_wd);	
 	switch(key) {
 	case KBD_ESC:
 		menu_destroy();
@@ -291,7 +294,7 @@ dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);
 		if(!submenu_show()) return 1; 
 		if(change_item(cur_item->l_submenu.prev))
 			highlight_item(cur_submenu, 1);
-		dolog(__FUNCTION__": cur item %s\n", cur_item->name);
+		dolog("%s: cur item %s\n", __FUNCTION__, cur_item->name);
 		break;	
 	case KBD_UP:
 		if(!submenu_show()) return 1; 
@@ -308,10 +311,10 @@ dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);
 		menu_destroy();
 		break;
 	default: 
-dolog(__FUNCTION__": [%d] skipped\n", key);
+		dolog("%s: [%d] skipped\n", __FUNCTION__, key);
 		return KEY_HANDLED;
 	}
-dolog(__FUNCTION__":[%d] accepted\n", key);
+	dolog("%s: [%d] accepted\n", __FUNCTION__, key);
 	return KEY_HANDLED;
 }
 

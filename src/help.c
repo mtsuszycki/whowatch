@@ -51,7 +51,7 @@ void sub_help(void)
 
 static void show_help(void *unused)
 {
-dolog(__FUNCTION__":printing help\n");
+	dolog("%s: printing help\n", __FUNCTION__);
 	general();
 	if(current == &users_list) userwin_help();
 	if(current == &proc_win) procwin_help();	

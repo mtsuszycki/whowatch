@@ -318,9 +318,9 @@ key:
 	waitdata = 0;
 
 	{
-		char *q = buf;
+	  char *q = (char*)buf;
 		while(p < e) *q++ = *p++;
-		e = q;
+		e = (u8*)q;
 		p = buf;
 	}
 
@@ -328,4 +328,14 @@ key:
 	if(!(v&0xFFF)) goto again;
 
 	return v;
+}
+
+int read_key ()
+{
+  int key = getkey();
+  if (key == KBD_MORE) {
+    usleep(10000);
+    key = getkey();
+  }
+  return key;
 }

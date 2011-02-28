@@ -75,7 +75,7 @@ static void synchronize(void)
 		memset(z, 0, sizeof *z);
 		check_line(l);
 		z->line = l++;
-		(struct process *) p->priv = z;
+		p->priv = z;
 		z->proc = p;
 		if (*current){
 			z->next = *current;
@@ -275,7 +275,7 @@ static int signal_keys(int key)
 
 	if(!(key&KBD_CTRL)) return KEY_SKIPPED;
 	key &= KBD_MASK;
-dolog(__FUNCTION__": %x %x\n", key, 'H');	
+	dolog("%s: %x %x\n", __FUNCTION__, key, 'H');	
 
 	switch(key) {
 	case 'K': signal = 9; break;

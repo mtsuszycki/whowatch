@@ -3,6 +3,7 @@
  * is used. Pre-allocated memory is managed by a bit map.
  */
 
+#include <time.h>
 #include "whowatch.h"
 
 #define USED 		1
@@ -42,10 +43,11 @@ static struct _block_tbl_t *new_block(int size, struct list_head *h)
 {
 	struct _block_tbl_t *tmp;
 	tmp = calloc(1, sizeof *tmp);
-	if(!tmp) prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
+	if(!tmp) prg_exit("new_block(): Cannot allocate memory. [1]\n");
 	tmp->_block_t = calloc(1, size * TBL_SIZE);
-dolog(__FUNCTION__ ":new block(%d) - alloc size = %d\n", nr_blocks, size * TBL_SIZE);
-	if(!tmp->_block_t) prg_exit(__FUNCTION__ ": Cannot allocate memory.\n");
+	dolog("%s: new block(%d) - alloc size = %d\n",
+		__FUNCTION__, nr_blocks, size * TBL_SIZE);
+	if(!tmp->_block_t) prg_exit("new_block(): Cannot allocate memory. [2]\n");
 	list_add(&tmp->head, h);
 	return tmp;
 }
@@ -68,15 +70,17 @@ int nr = 0;
 		}
 nr++;
 	}
-	dolog(__FUNCTION__": no empty space, getting new one.\n");
+	dolog("%s: no empty space, getting new one.\n", __FUNCTION__);
 	tmp = new_block(size, h);
 	i = 0;
 FOUND:
-	dolog(__FUNCTION__": empty in %d block at %d pos\n", nr, i);
+	dolog("%s: empty in %d block at %d pos\n", __FUNCTION__, nr, i);
 	tmp->map |= 1<<i;
 	return tmp->_block_t + (size * i);
 }
 
+#if 0
+/* dead code */
 /*
  * Free all unused blocks of memory (map == 0)
  */
@@ -85,12 +89,12 @@ static void rm_free_blocks(struct list_head *head)
 	struct _block_tbl_t *tmp;
 	struct list_head *t, *p;
 	t = head->next;
-dolog(__FUNCTION__": entering\n");
+	dolog("%s: entering\n", __FUNCTION__);
 	while(t != head) {
 		tmp = list_entry(t, struct _block_tbl_t, head);
 		p = t->next;
 		if(!tmp->map) {
-			dolog(__FUNCTION__": empty block found %p\n", tmp);
+			dolog("%s: empty block found %p\n", __FUNCTION__, tmp);
 			free(tmp->_block_t);
 			list_del(&tmp->head);
 			free(tmp);
@@ -98,6 +102,7 @@ dolog(__FUNCTION__": entering\n");
 		t = p;
 	}
 }
+#endif
 
 /*
  * Find entry pointed by p and mark it unused.
@@ -113,13 +118,13 @@ int i = 0;
 			goto FOUND;
 		i++;
 	}
-	dolog(__FUNCTION__ ":entry not found - error\n");
+	dolog("%s: entry not found - error\n", __FUNCTION__);
 	return -1;
 FOUND:
-	dolog(__FUNCTION__": %p pointer found in %d\n", p, i);
+	dolog("%s: %p pointer found in %d\n", __FUNCTION__, p, i);
 	tmp->map &= ~(1<<(p - tmp->_block_t)/size);
-	dolog(__FUNCTION__": setting map pos %d to zero, map = %x\n",
-		(p - tmp->_block_t)/size, tmp->map);
+	dolog("%s: setting map pos %d to zero, map = %x\n",
+		__FUNCTION__, (p - tmp->_block_t)/size, tmp->map);
 	return 0;
 }		 	
 

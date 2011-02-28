@@ -1,7 +1,7 @@
-#include <termios.h>
 #include <fcntl.h>
+#include <termios.h>
 
-struct termios tio;
+static struct termios tio;
 
 void term_raw()
 {

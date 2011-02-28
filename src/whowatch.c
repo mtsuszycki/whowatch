@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include "whowatch.h"
@@ -84,9 +85,9 @@ static void periodic(void)
 	wnoutrefresh(main_win);
 	wnoutrefresh(info_win.wd);
 	sub_periodic();
-menu_refresh();
-box_refresh();
-info_refresh();
+	menu_refresh();
+	box_refresh();
+	info_refresh();
 	doupdate();
 }
 
@@ -152,7 +153,7 @@ static void key_action(int key)
 	default: return;
 	}
 SKIP:
-dolog(__FUNCTION__": doing refresh\n");
+	dolog("%s: doing refresh\n", __FUNCTION__);
 	wnoutrefresh(main_win);
 	wnoutrefresh(info_win.wd);
 	pad_refresh();
@@ -170,7 +171,7 @@ static void get_rows_cols(int *y, int *x)
 		*x = win.ws_col;
 		return;
 	}
-	prg_exit(__FUNCTION__ ": ioctl error: cannot read screen size.");
+	prg_exit("get_row_cols(): ioctl error: cannot read screen size.");
 }								
 
 static void winch_handler()
@@ -214,21 +215,16 @@ static void int_handler()
 	exit(0);
 }		
 
-int main(int argc, char **argv)
+int main (int argc, char **argv)
 {
 	struct timeval tv;
-#ifndef RETURN_TV_IN_SELECT
-  	struct timeval before;
-  	struct timeval after;
-#endif
-	fd_set rfds;
-	int retval;
+
 #ifdef HAVE_LIBKVM
 	if (kvm_init()) can_use_kvm = 1;
 #endif
 	
 #ifdef DEBUG
-	if (!(debug_file = fopen("debug", "w"))){
+	if (!(debug_file = fopen("debug", "w"))) {
 		printf("file debug open error\n");
 		exit(0);
 	}
@@ -243,12 +239,12 @@ int main(int argc, char **argv)
 	curses_init();
 	current = &users_list;
 	users_init();
-        procwin_init();
+	procwin_init();
 	subwin_init();
 	menu_init();
 	signal(SIGINT, int_handler);
 	signal(SIGWINCH, winch_handler);  
-//	signal(SIGSEGV, segv_handler);
+	//	signal(SIGSEGV, segv_handler);
 
 	print_help();
 	update_load();
@@ -257,21 +253,24 @@ int main(int argc, char **argv)
 	wnoutrefresh(info_win.wd);
 	wnoutrefresh(help_win.wd);
 	doupdate();
-		
+	
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
+	
 	for(;;) {				/* main loop */
-		int key;
+#ifndef RETURN_TV_IN_SELECT
+		struct timeval before;
+		struct timeval after;
+#endif
+		fd_set rfds;
+		int retval;
+		
 		FD_ZERO(&rfds);
-		FD_SET(0,&rfds);
+		FD_SET(STDIN_FILENO,&rfds);
 #ifdef RETURN_TV_IN_SELECT
 		retval = select(1, &rfds, 0, 0, &tv);
 		if(retval > 0) {
-			key = getkey();
-			if(key == KBD_MORE) {
-				usleep(10000);
-				key = getkey();
-			}
+			int key = read_key();
 			key_action(key);
 		}
 		if (!tv.tv_sec && !tv.tv_usec){
@@ -295,7 +294,6 @@ int main(int argc, char **argv)
 
 		}
 #endif
-		if(size_changed) resize();
-
+		if (size_changed) resize();
 	}
 }

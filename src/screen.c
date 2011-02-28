@@ -41,7 +41,7 @@ static void alloc_color(void)
 void win_init(void)
 {
 	curs_buf = realloc(curs_buf, screen_cols * sizeof(chtype));
-	if(!curs_buf) errx(1, __FUNCTION__ ": Cannot allocate memory.");
+	if(!curs_buf) errx(1, "%s: Cannot allocate memory.", __FUNCTION__);
 	bzero(curs_buf, sizeof(chtype) * screen_cols);
 	users_list.rows = screen_rows - RESERVED_LINES - 1;
 	users_list.cols = screen_cols - 2; 	

@@ -6,7 +6,6 @@ PACKAGGE=whowatch
 AC_SUBST(VERSION)
 AC_SUBST(PACKAGE)
 AC_CONFIG_HEADER(src/config.h)
-AC_CONFIG_HEADER(src/config.h)
 
 dnl Checks for programs.
 AC_PROG_CC
@@ -48,7 +47,7 @@ AC_TRY_COMPILE([
 #include <utmp.h>
 ],
 [int i=USER_PROCESS;],[AC_MSG_RESULT(yes)
-	AC_DEFINE(HAVE_USER_PROCESS)], AC_MSG_RESULT(no))
+	AC_DEFINE([HAVE_USER_PROCESS],[1],[define if utmp has USER_PROCESS type])], AC_MSG_RESULT(no))
 
 AC_MSG_CHECKING([whether utmp has DEAD_PROCESS type])
 AC_TRY_COMPILE([
@@ -56,7 +55,7 @@ AC_TRY_COMPILE([
 #include <utmp.h>
 ],
 [int i=DEAD_PROCESS;],[AC_MSG_RESULT(yes)
-	AC_DEFINE(HAVE_DEAD_PROCESS)], AC_MSG_RESULT(no))
+	AC_DEFINE([HAVE_DEAD_PROCESS],[1],[define if utmp has DEAD_PROCESS type])], AC_MSG_RESULT(no))
 
 AC_MSG_CHECKING([whether utmp struct has ut_pid member])
 AC_TRY_COMPILE([
@@ -64,7 +63,7 @@ AC_TRY_COMPILE([
 #include <utmp.h>
 ],
 [struct utmp u;int i=u.ut_pid;],[AC_MSG_RESULT(yes)
-	AC_DEFINE(HAVE_UTPID)], AC_MSG_RESULT(no))
+	AC_DEFINE([HAVE_UTPID],[1],[define if utmp struct has ut_pid member])], AC_MSG_RESULT(no))
 
 AC_MSG_CHECKING([whether utmp struct has ut_name member])
 AC_TRY_COMPILE([
@@ -72,7 +71,7 @@ AC_TRY_COMPILE([
 #include <utmp.h>
 ],
 [struct utmp u;char *c=u.ut_name;],[AC_MSG_RESULT(yes)
-	AC_DEFINE(HAVE_UT_NAME)], AC_MSG_RESULT(no))
+	AC_DEFINE([HAVE_UT_NAME],[1],[define if utmp struct has ut_name member])], AC_MSG_RESULT(no))
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
@@ -96,7 +95,7 @@ if(tv.tv_sec == 0) exit(0);
 else exit(1);
 }
 ],
-[AC_MSG_RESULT(yes); AC_DEFINE(RETURN_TV_IN_SELECT)],
+[AC_MSG_RESULT(yes); AC_DEFINE([RETURN_TV_IN_SELECT],[1],[define if select() modifies the time value])],
 AC_MSG_RESULT(no), AC_MSG_RESULT(no))
 
 AC_MSG_CHECKING([whether sysctl() can be used])
@@ -108,7 +107,7 @@ int mib[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,1};
 int len;
 sysctl(mib, 4, 0, &len, 0, 0);
 ],
-[AC_MSG_RESULT(yes); AC_DEFINE(HAVE_PROCESS_SYSCTL)],
+[AC_MSG_RESULT(yes); AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],
 AC_MSG_RESULT(no))
 
 dnl Make symbolic links according to choosen unix dialect

@@ -27,7 +27,6 @@ fi
 if test "$CURS" != "1"; then
 	AC_MSG_ERROR([Could not find proper curses library])
 fi
-AC_CHECK_LIB(dl, dlopen, [LIBS="$LIBS -ldl"])
 
 dnl Checks for header files.
 AC_HEADER_DIRENT

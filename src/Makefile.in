@@ -72,8 +72,8 @@ clean:
 	rm -rf ./*.o
 	rm -f whowatch stamp-h stamp-h[0-9]* stamp-h.in
 install: whowatch
-	$(INSTALL) -m 755 whowatch $(bindir)/whowatch
-	$(INSTALL) -m 644 whowatch.1 $(mandir)/man1/whowatch.1
+	$(INSTALL) -m 755 whowatch -D $(DESTDIR)$(bindir)/whowatch
+	$(INSTALL) -m 644 $(top_srcdir)/whowatch.1 -D $(DESTDIR)$(mandir)/man1/whowatch.1
 	
 distclean:
 	make clean

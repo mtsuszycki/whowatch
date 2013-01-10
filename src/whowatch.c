@@ -176,7 +176,7 @@ static void key_action(int key)
 	mwin_wrefresh();
 }
 
-static void get_scrsize(int *y, int *x)
+static void get_scrsize(u32 *y, u32 *x)
 {
 	struct winsize win;
 	if(ioctl(1,TIOCGWINSZ,&win) == -1)

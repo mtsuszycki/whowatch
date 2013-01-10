@@ -18,7 +18,7 @@ static int do_search(struct wdgt *w, char *s, int type)
 	int err;
 	void *ret;
 	static char errbuf[64];
-DBG("Searching text %s", s);	
+	DBG("Searching text %s", s);
 	err = regcomp(&cur_reg, s, REG_EXTENDED | REG_ICASE | REG_NOSUB);
 	if(err) {
 		regerror(err, &cur_reg, errbuf, sizeof errbuf);

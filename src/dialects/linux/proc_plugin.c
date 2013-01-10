@@ -169,12 +169,13 @@ static void read_tcp_conn(void)
 	int i;
 	unsigned int inode;
 	static int flag = 0;
-return;
+return; //function not finished yet, more testing required
 	if(!flag) {
 		hash_init(tcp_hashtable); 
 		flag = 1;
 	}	
 	if(!(f = fopen("/proc/net/tcp", "r"))) return;
+	/* ignore the header */
 	fgets(buf, sizeof buf, f);
 	while(fgets(buf, sizeof buf, f)) {
 		i = strlen(buf) - 1;

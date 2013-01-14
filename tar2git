@@ -1,0 +1,123 @@
+#!/bin/sh
+set -ex
+
+process () {
+	mkdir -p "pro/$1"
+	pwd
+	ls -ld "ext/$1/files/" "ext/$1/files/"* "pro/$1" "pro/$1/files" || true
+        cp -a "ext/$1/files/"* "pro/$1/files"
+	cd "pro/$1/files"
+
+	find * -empty -delete -print >> ../deleted
+	find * -iname tags -delete -print >> ../deleted
+	find * -iname whowatch -delete -print >> ../deleted
+	find * -iname core -delete -print >> ../deleted
+	find * -iname \*.o -delete -print >> ../deleted
+	find * -iname config.cache -delete -print >> ../deleted
+	find * -iname config.h\* -delete -print >> ../deleted
+	find * -iname config.log -delete -print >> ../deleted
+	find * -iname config.status -delete -print >> ../deleted
+	find * -iname configure -delete -print >> ../deleted
+	find * -iname install-sh -delete -print >> ../deleted
+	find * -iname Makefile | xargs grep -l 'Generated automatically from Makefile.in by configure' | tee -a ../deleted | xargs --no-run-if-empty rm
+	sort -u ../deleted > ../deleted.tmp
+	mv ../deleted.tmp ../deleted
+
+	echo "Import $1" > ../commit-msg
+	if [ -s ../deleted ] ; then
+		echo "
+These files have been deleted:
+
+$(cat ../deleted)" >> ../commit-msg
+	fi
+
+	cd ../../..
+}
+
+process_patch () {
+	mkdir -p "pro/$1"
+        cp -a "pro/$2/files" "pro/$1/files"
+	cat "tar/$1" | patch --directory "pro/$1/files" --strip $3
+	echo "Import $1" > "pro/$1/commit-msg"
+}
+
+importdir () {
+	cd git
+        rm -rf *
+        cp -a ../tar2git .
+        cp -a ../pro/$1/files/* .
+        git add -u || true
+        git add . || true
+        git commit --date="$(date --reference "../tar/$1")" -F "../pro/$1/commit-msg" || true
+        git tag "$1" || true
+	cd ..
+}
+
+mkdir -p tar
+cd tar
+rm -f *i386.rpm
+# *i386.rpm: don't need binaries
+# whowatch-current: is a duplicate of one of the other tarballs
+wget -c -r -nd -np -A 'whowatch*' -R '*i386.rpm' -R '*whowatch-current*' http://wizard.ae.krakow.pl/~mike/download/
+cd ..
+
+rm -rf git ext pro
+mkdir -p git ext pro
+
+for f in $(find tar -type f -iname \*.tar.gz) ; do
+	dir="ext/$(basename $f)/files"
+	mkdir -p "$dir"
+	tar xf $f -C "$dir"
+done
+
+for f in $(find tar -type f -iname \*.tar.gz) ; do
+        process "$(basename $f)"
+done
+process_patch whowatch-1.1.1.diff whowatch-1.1.tar.gz 0
+process_patch whowatch-3.diff whowatch-1.4-beta4.tar.gz 1
+process_patch whowatch.diff whowatch-1.4-beta4.tar.gz 1
+
+export GIT_AUTHOR_NAME="Paul Wise"
+export GIT_AUTHOR_EMAIL="pabs3@bonedaddy.net"
+
+cd git
+git init
+cp ../tar2git .
+git add .
+git commit -m 'Add script used to import the tarballs'
+cd ..
+
+export GIT_AUTHOR_NAME="Michal Suszycki"
+export GIT_AUTHOR_EMAIL="mt_suszycki@yahoo.com"
+
+importdir whowatch-1.1.tar.gz
+importdir whowatch-1.1.1.diff
+importdir whowatch-1.2-beta.tar.gz
+importdir whowatch-1.2.tar.gz
+importdir whowatch-1.3.tar.gz
+importdir whowatch-1.3.1.tar.gz
+importdir whowatch-1.4-beta1.tar.gz
+importdir whowatch-1.4-beta2.tar.gz
+importdir whowatch-1.4-beta3.tar.gz
+importdir whowatch-1.4-beta4-jb3.tar.gz
+importdir whowatch-1.4-beta4.tar.gz
+importdir whowatch.diff
+importdir whowatch-3.diff
+importdir whowatch-1.4-beta5.tar.gz
+importdir whowatch-1.4-beta6.tar.gz
+importdir whowatch-1.4.tar.gz
+importdir whowatch-1.5.1.tar.gz
+importdir whowatch-1.5.2.tar.gz
+importdir whowatch-1.5.3.1.tar.gz
+importdir whowatch-1.6.0.tar.gz
+importdir whowatch-1.7.tar.gz
+importdir whowatch-1.8.tar.gz
+importdir whowatch-1.8.3.tar.gz
+
+export GIT_AUTHOR_NAME="Paul Wise"
+export GIT_AUTHOR_EMAIL="pabs3@bonedaddy.net"
+
+cd git
+git rm -f tar2git
+git commit -m 'Drop script used to import the tarballs since it is not needed any more'
+cd ..

@@ -1,10 +1,8 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(src/whowatch.c)
+AC_INIT([whowatch], [1.8.4], [http://github.com/mtsuszycki/whowatch/issues], [whowatch])
+AM_INIT_AUTOMAKE([foreign])
 
-VERSION="1.5.5"
-PACKAGGE=whowatch
-AC_SUBST(VERSION)
-AC_SUBST(PACKAGE)
+AC_CONFIG_SRCDIR([src/whowatch.c])
 AC_CONFIG_HEADER(src/config.h)
 
 dnl Checks for programs.
@@ -116,12 +114,7 @@ if test "$HAVE_PROCESS_SYSCTL" = ""; then
 else
 	os="bsd"
 fi
-
-files="proc_plugin.c procinfo.c procinfo.h"
-for i in $files ; do 
-	rm -f src/$i
-	ln -s dialects/$os/$i src/$i
-done
+AC_SUBST([os])
 
 AC_OUTPUT(Makefile src/Makefile)
 

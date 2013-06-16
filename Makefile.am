@@ -8,4 +8,5 @@ dist-hook:
 	fi
 
 EXTRA_DIST = \
+	ChangeLog.old \
 	PLUGINS.readme

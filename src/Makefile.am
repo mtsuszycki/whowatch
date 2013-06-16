@@ -31,6 +31,12 @@ procinfo.c: procinfo.h
 $(OS_SPECIFIC):
 	ln -sf $(srcdir)/dialects/$(os)/$@ $@
 
-EXTRA_DIST = dialects
+EXTRA_DIST = \
+	dialects/linux/proc_plugin.c \
+	dialects/linux/procinfo.h \
+	dialects/linux/procinfo.c \
+	dialects/bsd/proc_plugin.c \
+	dialects/bsd/procinfo.h \
+	dialects/bsd/procinfo.c
 
 DISTCLEANFILES = $(OS_SPECIFIC)

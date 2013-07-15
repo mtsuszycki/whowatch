@@ -17,7 +17,7 @@ static struct dsource {
 	int want_crsr;		/* if data is related to main display cursor */
 	int (*keyh)(int);
 
-} dss[] = {{'d', euser, 1, 0 }, {'s', esys, 0, 0}, {'l',siglist, 0, 0 } };
+} dss[] = {{'d', euser, 1, 0 }, {'s', esys, 0, 0}, {'p',siglist, 0, 0 } };
 
 static struct dsource *cur_ds = &dss[0];
 static struct dsource *mainw = &dss[0];   /* related to main window (proc/user details */

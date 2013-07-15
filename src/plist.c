@@ -2,14 +2,15 @@
 #include "proctree.h"
 
 //static char *hlp = "\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[K]ILL";
-static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [^k]ILL [/]search";
-static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [^k]ILL [/]search";
+static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
+static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
 
 static LIST_HEAD(plist);
 
 static struct process *begin;
 static pid_t tree_root = 1;
 static unsigned int show_owner;
+static unsigned int show_linenr;
 static struct __pstat {
 	u32	nr, rn, sl, st, zm;
 } pstat;
@@ -141,18 +142,21 @@ static char get_state_color(char state)
 static char *prepare_line(struct wdgt *w, struct process *p)
 {
 	char *tree, state = p->proc->state;
-	
+	int offset = 0;
 	if (!p) return 0;
 	tree = tree_string(tree_root, p->proc);
 	if(state == 'S') state = ' ';
+	if (show_linenr) 
+		offset = snprintf(w->mwin->gbuf, w->mwin->gbsize, "\x3%3d ", p->line + 1);
+	if (offset < 0) return "";
 	if(show_owner) 
-		snprintf(w->mwin->gbuf, w->mwin->gbsize ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
+		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
 			p->proc->pid, get_state_color(state), 
 			state, get_owner_name(proc_pid_uid(p->proc->pid)), tree, 
 			get_cmdline(p->proc->pid));
 	 else 
-		snprintf(w->mwin->gbuf, w->mwin->gbsize,"\x3%d %5d %c%c \x2%s \x3%s",
-			p->line, p->proc->pid, get_state_color(state), 
+		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset,"\x3%5d %c%c \x2%s \x3%s",
+			p->proc->pid, get_state_color(state), 
 			state, tree, get_cmdline(p->proc->pid));
 		
 	return w->mwin->gbuf;
@@ -369,6 +373,7 @@ static int pkeyh(struct wdgt *w, int key)
         switch(key) {
 		case 'o': show_owner ^= 1; WNEED_REDRAW(w); break;
 		case 'r': ptree_periodic(w); WNEED_REDRAW(w); break;
+		case 'l': show_linenr ^=1 ; WNEED_REDRAW(w); break;
         /*        case KBD_UP:
 		case KBD_DOWN:
 		case KBD_PAGE_UP:

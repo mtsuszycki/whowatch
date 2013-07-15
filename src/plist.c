@@ -147,7 +147,7 @@ static char *prepare_line(struct wdgt *w, struct process *p)
 	tree = tree_string(tree_root, p->proc);
 	if(state == 'S') state = ' ';
 	if (show_linenr) 
-		offset = snprintf(w->mwin->gbuf, w->mwin->gbsize, "\x3%3d ", p->line + 1);
+		offset = snprintf(w->mwin->gbuf, w->mwin->gbsize, "\x6%4d ", p->line + 1);
 	if (offset < 0) return "";
 	if(show_owner) 
 		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 

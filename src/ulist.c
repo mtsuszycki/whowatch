@@ -287,7 +287,7 @@ DBG("ulist responded to type %d", type);
 				if(u) return u->name;
 				else return "No user found";
 		case MSND_SEARCH:
-				return user_search(w, (u32)d);
+				return (void *)user_search(w, (u32)d);
 				break;
 	}
 	

@@ -176,7 +176,7 @@ return; //function not finished yet, more testing required
 	}	
 	if(!(f = fopen("/proc/net/tcp", "r"))) return;
 	/* ignore the header */
-	fgets(buf, sizeof buf, f);
+	tmp = fgets(buf, sizeof buf, f);
 	while(fgets(buf, sizeof buf, f)) {
 		i = strlen(buf) - 1;
 		for(tmp = buf + i; *tmp == ' ' && tmp>buf; tmp--);

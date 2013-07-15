@@ -25,7 +25,7 @@ static int do_search(struct wdgt *w, char *s, int type)
 //		info_box(" Regex error ", errbuf);
 		return 0;
 	}
-	ret = wmsg_send(w, MSND_SEARCH, type);
+	ret = wmsg_send(w, MSND_SEARCH, (void *)type);
 	regfree(&cur_reg);
 	return (int)ret;
 }

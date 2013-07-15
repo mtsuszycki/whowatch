@@ -279,7 +279,7 @@ static void *pmsgh(struct wdgt *w, int type, struct wdgt *s, void *d)
 			pid = crsr_pid(w->crsr);
 			return &pid;
 		case MSND_SEARCH:
-			return getprocbyname(w, (u32)d);
+			return (int *)(getprocbyname(w, (u32)d));
 			break;
 	}
 	return 0;

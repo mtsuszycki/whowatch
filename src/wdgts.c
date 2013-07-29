@@ -27,7 +27,7 @@ static int do_search(struct wdgt *w, char *s, int type)
 	}
 	ret = wmsg_send(w, MSND_SEARCH, (void *)type);
 	regfree(&cur_reg);
-	return (int)ret;
+	return (int)(intptr_t)ret;
 }
 
 static char *cur_hlp;

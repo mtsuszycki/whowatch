@@ -1,0 +1,27 @@
+What is new in 1.8.4    
+
+ - Added 'l' key to the process tree view. It shows the line numbers in the first column.
+    
+ - Modernisation and fixing up the build system, fixes and cleanups by Paul Wise, among others: 
+	* Imported all previous versions to git
+	* Prevent prebuilt .o files from ending up in the tarball
+    	* Distribute ChangeLog.old, PLUGINS.readme in the source tarball
+    	* Ignore some generated and copied-in files
+        * fix FTBFS due to newer autoconf version
+
+ - Minor bugfixes
+ - Support for DESTDIR (Johnny A. Solbu) 
+
+What is new in 1.4
+
+ - Added average load to the header
+
+ - 'c' key for turning long processes names on and off.
+
+ - Finally added suport for FreeBSD and OpenBSD
+
+ - Added support for PAGE_UP, PAGE_DOWN, HOME, END keys and
+
+ - Screen functions changed for better performance.
+
+

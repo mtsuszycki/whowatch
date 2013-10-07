@@ -3,7 +3,7 @@
 #include "whowatch.h"
 #include "config.h"
 
-#define TIMEOUT		 	6000
+#define TIMEOUT		3 
 /* Main window that holds all widgets and manages them 	*/
 static struct win win;
 static struct win *mwin = &win;

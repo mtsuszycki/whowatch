@@ -9,6 +9,7 @@ config.log
 config.status
 configure
 INSTALL
+compile
 depcomp
 install-sh
 missing

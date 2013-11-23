@@ -81,12 +81,12 @@ void get_info(int pid, struct procinfo *p)
 	
 	if(fill_kinfo(&info, pid) == -1) return;
 	
-    	p->ppid = info.kp_eproc.e_ppid;
-    	p->tpgid = info.kp_eproc.e_tpgid;
-    	p->euid = info.kp_eproc.e_pcred.p_svuid;
-    	p->stat = info.kp_proc.p_stat;
-    	strncpy(p->exec_file, info.kp_proc.p_comm, EXEC_FILE);
-    	p->cterm = info.kp_eproc.e_tdev;
+	p->ppid = info.kinfo_ppid;
+	p->tpgid = info.kinfo_tpgid;
+	p->euid = info.kinfo_svuid;
+	p->stat = info.kinfo_stat;
+	strncpy(p->exec_file, info.kinfo_comm, EXEC_FILE);
+	p->cterm = info.kinfo_tdev;
 	p->exec_file[EXEC_FILE] = '\0';
 }
 #endif
@@ -141,18 +141,18 @@ int get_login_pid(char *tty)
 	if(sysctl(mib, 4, info, &len, 0, 0) == -1)
 		return -1;
 	for(i = 0; i < el; i++) {
-		if(!(pid = info[i].kp_proc.p_pid)) continue;
+		if(!(pid = info[i].kinfo_pid)) continue;
 		get_info(get_ppid(pid), &p);
 		if(p.cterm == -1 || p.cterm != t) {
 			cndt = pid;
-			l = strlen(info[i].kp_proc.p_comm);
+			l = strlen(info[i].kinfo_comm);
 			/*
 			 * This is our best match: parent of the process
 			 * doesn't have controlling terminal and process'
 			 * name ends with "sh"
 			 *
 			 */
-			if(l > 1 && !strncmp("sh",info[i].kp_proc.p_comm+l-2,2)) {
+			if(l > 1 && !strncmp("sh",info[i].kinfo_comm+l-2,2)) {
 				free(info);
 				return pid;
 			}
@@ -235,7 +235,7 @@ char *get_cmdline(int pid)
 	bzero(buf, sizeof buf);
 	if(fill_kinfo(&info, pid) == -1)
 		return "-";
-	memcpy(buf, info.kp_proc.p_comm, sizeof buf - 1);
+	memcpy(buf, info.kinfo_comm, sizeof buf - 1);
 	if(!full_cmd) return buf;
 #ifdef HAVE_LIBKVM
 	if(!can_use_kvm) return buf;

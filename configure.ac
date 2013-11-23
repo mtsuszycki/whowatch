@@ -109,6 +109,14 @@ sysctl(mib, 4, 0, &len, 0, 0);
 [AC_MSG_RESULT(yes); AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],
 AC_MSG_RESULT(no))
 
+AC_CHECK_MEMBERS(
+[struct kinfo_proc.kp_proc],,,
+[#include <sys/types.h>
+ #include <sys/param.h>
+ #include <sys/sysctl.h>
+ #include <sys/proc.h>
+ ])
+
 dnl Make symbolic links according to choosen unix dialect
 if test "$HAVE_PROCESS_SYSCTL" = ""; then
 	os="linux"

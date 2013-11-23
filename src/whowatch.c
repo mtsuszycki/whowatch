@@ -441,7 +441,7 @@ int main(int argc, char **argv)
 		}
 		if(tv.tv_sec <= 0) {
 			ticks++;
-			periodic();
+			main_periodic();
 			tv.tv_sec = TIMEOUT;
 		}
 #endif

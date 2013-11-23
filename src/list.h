@@ -16,7 +16,7 @@ struct list_head {
 	struct list_head *next, *prev;
 };
 
-#define LIST_HEAD(name) \
+#define DECL_LIST_HEAD(name) \
 	struct list_head name = { &name, &name }
 
 #define INIT_LIST_HEAD(ptr) do { \

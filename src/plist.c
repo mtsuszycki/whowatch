@@ -5,7 +5,7 @@
 static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
 static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
 
-static LIST_HEAD(plist);
+static DECL_LIST_HEAD(plist);
 
 static struct process *begin;
 static pid_t tree_root = 1;

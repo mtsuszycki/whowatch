@@ -24,7 +24,7 @@ struct user_t
         int 	line;                 	   
 };
 
-static LIST_HEAD(users_l);
+static DECL_LIST_HEAD(users_l);
 static int toggle;	/* if 0 show cmd line else show idle time 	*/
 //static char *uhelp = "\001[F1]Help [F9]Menu [ENT]proc all[t]ree [i]dle/cmd " 
 //			" [c]md [d]etails [s]ysinfo";

@@ -88,8 +88,8 @@ static inline int hash(int n)
 	return n&(HASH_SIZE-1);
 }
 
-static LIST_HEAD(tcp_l);
-static LIST_HEAD(tcp_blocks);
+static DECL_LIST_HEAD(tcp_l);
+static DECL_LIST_HEAD(tcp_blocks);
 static struct list_head tcp_hashtable[HASH_SIZE];
 
 static void hash_init(struct list_head *hash)

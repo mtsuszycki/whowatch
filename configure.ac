@@ -106,7 +106,7 @@ int mib[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,1};
 size_t len;
 sysctl(mib, 4, 0, &len, 0, 0);
 ],
-[AC_MSG_RESULT(yes); AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],
+[AC_MSG_RESULT(yes); HAVE_PROCESS_SYSCTL=yes; AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],
 AC_MSG_RESULT(no))
 
 AC_CHECK_MEMBERS(

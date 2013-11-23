@@ -436,7 +436,7 @@ int main(int argc, char **argv)
 		gettimeofday(&after, 0);
 		tv.tv_sec -= (after.tv_sec - before.tv_sec);
 		if(retval > 0) {
-			int key = read_key();
+			key = getkey();
 			key_action(key);
 		}
 		if(tv.tv_sec <= 0) {

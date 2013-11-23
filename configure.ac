@@ -103,7 +103,7 @@ AC_TRY_COMPILE([#include <sys/types.h>
 #include <sys/sysctl.h>],
 [
 int mib[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,1};
-int len;
+size_t len;
 sysctl(mib, 4, 0, &len, 0, 0);
 ],
 [AC_MSG_RESULT(yes); AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],

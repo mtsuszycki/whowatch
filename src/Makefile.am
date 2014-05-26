@@ -24,19 +24,15 @@ whowatch_SOURCES = \
 	kbd.c \
 	kbd.h
 
-OS_SPECIFIC = procinfo.c procinfo.h proc_plugin.c
-
-procinfo.c: procinfo.h
+OS_SPECIFIC = procinfo.c proc_plugin.c
 
 $(OS_SPECIFIC):
 	ln -sf $(srcdir)/dialects/$(os)/$@ $@
 
 EXTRA_DIST = \
 	dialects/linux/proc_plugin.c \
-	dialects/linux/procinfo.h \
 	dialects/linux/procinfo.c \
 	dialects/bsd/proc_plugin.c \
-	dialects/bsd/procinfo.h \
 	dialects/bsd/procinfo.c
 
 DISTCLEANFILES = $(OS_SPECIFIC)

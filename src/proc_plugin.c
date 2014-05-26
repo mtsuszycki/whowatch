@@ -6,8 +6,16 @@
  * gives better performance)
  */
 #include <err.h>
+#include "config.h"
 #include "pluglib.h"
 #include "whowatch.h"
+
+#if defined(HAVE_LIBKVM) && defined(HAVE_STDINT_H) && defined(HAVE_KVM_H)
+#include <stdint.h>
+#include <kvm.h>
+kvm_t *kd;
+extern int can_use_kvm;
+#endif
 
 #define EXEC_FILE	128
 #define elemof(x)	(sizeof (x) / sizeof*(x))

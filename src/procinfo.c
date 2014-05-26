@@ -264,7 +264,6 @@ char *get_w(int pid)
         return get_cmdline(p.tpgid);
 }
 
-
 /*
  * Get name of the executable
  */
@@ -299,6 +298,7 @@ int proc_getloadavg(double d[], int l)
 	return getloadavg(d, l);
 #endif
 }
+
 /* 
  * It really shouldn't be in this file.
  * Count idle time.

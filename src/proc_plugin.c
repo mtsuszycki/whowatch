@@ -471,7 +471,7 @@ static int fill_cpu_info(void)
 	f = fopen(buf, "r");
 	if(!f) return -1;
 	while(fgets(buf, sizeof buf, f)) 
-		if(!strncmp(buf, "cpu  ", 5)) goto FOUND;
+		if(!strncmp(buf, "cpu ", 4)) goto FOUND;
 	fclose(f);
 	return -1;
 FOUND:

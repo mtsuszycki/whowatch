@@ -10,6 +10,14 @@
 #include "pluglib.h"
 #include "whowatch.h"
 
+#if defined(HAVE_ASM_PARAM_H)
+#include <asm/param.h>
+#elif defined(__FreeBSD_kernel__) || defined(__FreeBSD__)
+#define HZ 100
+#else
+#error HZ not implemented on this platform
+#endif
+
 #if defined(HAVE_LIBKVM) && defined(HAVE_STDINT_H) && defined(HAVE_KVM_H)
 #include <stdint.h>
 #include <kvm.h>
@@ -391,7 +399,6 @@ FOUND:
        	return boot_time;
 }		
 
-#include <asm/param.h>	// for HZ
 
 static void proc_starttime(int pid, char *name)
 {

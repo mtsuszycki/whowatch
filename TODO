@@ -19,3 +19,10 @@ FUNCTIONALITY:
 - display nr of processes, zombies, working etc.
 - make search box small, maybe at the last line
 
+FreeBSD port:
+- command-lines: kvm needs root, fall back on /proc or libprocstat
+- users
+- files
+- inodes
+- modules
+- file descriptors

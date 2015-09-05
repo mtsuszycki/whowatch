@@ -531,7 +531,7 @@ void esys(void *unused)
 	title("CPU: ");
 	get_cpu_info();
 	title("MEMORY:"); newln();
-	read_proc_file("/proc/meminfo", "MemTotal:", 0);
+	read_proc_file("/proc/meminfo", "MemTotal:", NULL);
 	title("USED FILES: "); ;
 
 	c = read_file_pos("/proc/sys/fs/file-nr", 2);
@@ -544,23 +544,23 @@ void esys(void *unused)
 	else println("%d", c);
 	
 	title("\nMAX FILES: ");
-	read_proc_file("/proc/sys/fs/file-max", 0, 0);
+	read_proc_file("/proc/sys/fs/file-max", NULL, NULL);
 	title("MAX INODES: ");
-	read_proc_file("/proc/sys/fs/inode-max", 0, 0);
+	read_proc_file("/proc/sys/fs/inode-max", NULL, NULL);
 	title("\nSTAT:"); newln();
 
 	read_proc_file("/proc/stat", "cpu", "intr");
 	title("\nLOADED MODULES:"); newln();
 
-	read_proc_file("/proc/modules", 0, 0);
+	read_proc_file("/proc/modules", NULL, NULL);
 	title("\nFILESYSTEMS:"); newln();
 
-	read_proc_file("/proc/filesystems", 0, 0);
+	read_proc_file("/proc/filesystems", NULL, NULL);
 	title("\nPARTITIONS:"); newln();
 
-	read_proc_file("/proc/partitions", 0, 0);
+	read_proc_file("/proc/partitions", NULL, NULL);
 	title("\nDEVICES:\n"); newln();
 
-	read_proc_file("/proc/devices", 0, 0);
+	read_proc_file("/proc/devices", NULL, NULL);
 }	
 

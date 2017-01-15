@@ -29,14 +29,13 @@
        
    27 June 1999
    - fixed bug with key handling and SIGINT handling reported by
-       [1]Christophe Long at [2]Webmotion Inc.
+       [1]Christophe Long at Webmotion Inc.
        
    3 June 1999
    - added cursor and support for screen scrolling
        
    25 June 1999
-   - added code for processes tree written by [3]Jan Bobrowski (see [4]jb
-       )
+   - added code for processes tree written by [2]Jan Bobrowski (see [3]jb)
        
    3 June 1999
    - added cursor and support for screen scrolling
@@ -70,6 +69,5 @@
 References
 
    1. mailto:Christophe.LONG@enst-bretagne.fr
-   2. http://www.webmotion.net/
-   3. mailto:jb@wizard.ae.krakow.pl
-   4. http://wizard.ae.krakow.pl/~jb
+   2. mailto:jb@wizard.ae.krakow.pl
+   3. http://wizard.ae.krakow.pl/~jb

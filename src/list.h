@@ -1,5 +1,5 @@
 /* 
- * This is taken from linux kernel source.
+ * This is taken from Linux kernel source.
  */
 
 /*

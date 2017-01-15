@@ -64,7 +64,7 @@
    - added colors and processes information
        
    9 March 1999
-   - fixed seg fault when user immediately logged out after loggin in
+   - fixed seg fault when user immediately logged out after logging in
 
 References
 

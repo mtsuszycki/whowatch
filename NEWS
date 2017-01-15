@@ -18,7 +18,7 @@ What is new in 1.4
 
  - 'c' key for turning long processes names on and off.
 
- - Finally added suport for FreeBSD and OpenBSD
+ - Finally added support for FreeBSD and OpenBSD
 
  - Added support for PAGE_UP, PAGE_DOWN, HOME, END keys and
 

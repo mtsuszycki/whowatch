@@ -103,7 +103,7 @@ void uredraw(struct wdgt *w)
 }
 	
 /*
- * Gather informations about users currently on the machine
+ * Gather information about users currently on the machine
  * Called only at start or restart
  */
 void read_utmp(void)		

@@ -228,7 +228,7 @@ void scr_wrefresh(struct wdgt *w)
 }
 	
 /*
- * Print string that contains formatting chatacters (for colors)
+ * Print string that contains formatting characters (for colors)
  */
 int scr_addfstr(struct wdgt *w, char *s, u32 y, u32 x)
 {

@@ -32,7 +32,7 @@ these types:
   
 Non-builtin plugins can be loaded at any time and they can overwrite
 output produced by builtin plugin, or they can append/insert its own
-information into the details window without losing ouput generated
+information into the details window without losing output generated
 by whowatch builtin plugin.
 
 # How to write a plugin?
@@ -183,7 +183,7 @@ int plugin_init(void *p)
 
 In fact in plugin_init() you rather don't need to bother about argument,
 since plugin_init is called only once (loading plugin into the whowatch).
-But you can use it if you need for example to initalize your own data 
+But you can use it if you need for example to initialize your own data 
 structures (malloc memory, init a hash table, whatever...).
 Argument (which is a pointer to int - pid of a selected process, or
 pointer to char - selected user's name) is really important in
@@ -225,4 +225,4 @@ since sys plugin doesn't depend on any pid or username, then:
 
 ....(add info about println, print, title, newln, bold)....
 
-With above informations you are ready to write your own plugins.
+With the above information you are ready to write your own plugins.

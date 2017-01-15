@@ -118,7 +118,7 @@ static void print_about(void *unused)
 	println("Author: Michal Suszycki <mike@wizard.ae.krakow.pl>");
 	println("");
 	println("BUILTIN PLUGINS:");
-	println("- proccess plugin: show detailed information about process");
+	println("- process plugin: show detailed information about process");
 	println("- user plugin: show detailed information about user");
 	println("- system plugin: system details");
 }

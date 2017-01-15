@@ -118,7 +118,7 @@ AC_CHECK_MEMBERS(
  #include <sys/proc.h>
  ])
 
-dnl Make symbolic links according to choosen unix dialect
+dnl Make symbolic links according to chosen unix dialect
 if test "$HAVE_PROCESS_SYSCTL" = ""; then
 	os="linux"
 else

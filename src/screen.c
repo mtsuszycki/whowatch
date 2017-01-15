@@ -386,6 +386,7 @@ int scr_keyh(struct wdgt *w, int key)
 }
 
 struct termios tio;
+int t_flags;
 void term_raw()
 {
 	struct termios t;
@@ -393,11 +394,13 @@ void term_raw()
 	t = tio;
 	t.c_lflag &= ~(ICANON|ECHO);
 	tcsetattr(0, TCSANOW, &t);
+	t_flags = fcntl(0, F_GETFL);
 	fcntl(0, F_SETFL, O_NONBLOCK);
 }
 
 void term_rest()
 {
+	fcntl(0, F_SETFL, t_flags);
 	tcsetattr(0, TCSANOW, &tio);
 }
 
@@ -422,6 +425,7 @@ void curses_init(void)
 
 void curses_end()
 {
+	term_rest();
 	endwin();
 	/* enable cursor */
         curs_set(old_curs_vis);          

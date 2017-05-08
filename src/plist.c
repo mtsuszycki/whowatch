@@ -1,6 +1,8 @@
 #include "whowatch.h"
 #include "proctree.h"
 
+#include <signal.h>
+
 //static char *hlp = "\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[K]ILL";
 static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
 static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
@@ -267,9 +269,9 @@ static int signal_keys(struct wdgt *w, int key)
 	if(!(key&KBD_CTRL)) return KEY_SKIPPED;
 	key &= KBD_MASK;
 	switch(key) {
-	case 'K': signal = 9; break;
-	case 'U': signal = 1; break;
-	case 'T': signal = 15; break;
+	case 'K': signal = SIGKILL; break;
+	case 'U': signal = SIGHUP; break;
+	case 'T': signal = SIGTERM; break;
 	}
 	if(signal) do_signal(w, signal, crsr_pid(w->crsr));
 	return KEY_HANDLED;

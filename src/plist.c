@@ -269,6 +269,7 @@ static int signal_keys(struct wdgt *w, int key)
 	if(!(key&KBD_CTRL)) return KEY_SKIPPED;
 	key &= KBD_MASK;
 	switch(key) {
+	case 'I': signal = SIGINT; break;
 	case 'K': signal = SIGKILL; break;
 	case 'U': signal = SIGHUP; break;
 	case 'T': signal = SIGTERM; break;

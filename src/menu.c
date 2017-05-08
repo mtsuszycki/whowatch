@@ -56,6 +56,11 @@ void m_details(void)
 //	sub_keys('d');
 }
 
+void m_int(void)
+{
+	return; //current->keys('I' | KBD_CTRL);
+}
+
 void m_kill(void)
 {
 	return; //current->keys('K' | KBD_CTRL);
@@ -184,6 +189,7 @@ static struct item_bind_t item_bind[] = {
 	{ 2, { DUMMY_HEAD , " Toggle owner", "o ", m_owner } } ,
 	{ 2, { DUMMY_HEAD , " Toggle long", "c ", m_long } } ,
 	{ 2, { DUMMY_HEAD , " Signal list", "l ", m_siglist } } ,
+	{ 2, { DUMMY_HEAD , " Send INT", "^I ", m_int } } ,
 	{ 2, { DUMMY_HEAD , " Send KILL", "^K ", m_kill } } ,
 	{ 2, { DUMMY_HEAD , " Send HUP", "^U ", m_hup } } ,
 	{ 2, { DUMMY_HEAD , " Send TERM", "^T ", m_term } } ,

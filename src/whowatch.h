@@ -140,18 +140,18 @@ void scr_wrefresh(struct wdgt *w);
 void scr_decor_resize(struct wdgt *w);
 void scr_delline(struct wdgt *, u32 );
 void scr_box(struct wdgt *w, char *s, u8 c);
+void scr_crsr_jmp(struct wdgt *w, int l);
 
-/**************/
+/* reg functions */
 void ulist_reg(struct wdgt *);
 void ptree_reg(struct wdgt *);
 void exti_reg(struct wdgt *);
 void users_init(void);
 void hlp_reg(struct wdgt *);
+void info_reg(struct wdgt *w);
 void input_reg(struct wdgt *w);
 
-
-/* user.c */
-//void check_wtmp(void);
+/* ulist.c */
 char *proc_ucount(void);
 
 /* whowatch.c */
@@ -159,17 +159,15 @@ void allocate_error();
 void prg_exit(char *);
 void send_signal(int, pid_t);
 
-/* process.c */
-void procwin_init(void);
-pid_t cursor_pid(void);
-//void tree_title(struct user_t *);
-
 /* screen.c */
 void curses_init();
 void curses_end();
 
 /* proctree.c */
 int update_tree();
+
+/* plist.c */
+void delete_tree_line(void *line);
 
 /* procinfo.c */
 #ifdef HAVE_PROCESS_SYSCTL
@@ -179,14 +177,11 @@ char *get_cmdline(int);
 int get_ppid(int);
 char *get_name(int);
 char *get_w(int pid);
-void delete_tree_line(void *line);
 char *count_idle(char *tty);
 int proc_pid_uid(u32);
 #ifndef HAVE_GETLOADAVG
 int proc_getloadavg(double [], int);
 #endif
-void proc_details(int);
-void sys_info(int);
 
 /* owner.c */
 char *get_owner_name(int u);
@@ -203,16 +198,15 @@ void esys(void *);
 /* user_plugin.c */
 void euser(void *);
 
-/* search.c */
+/* wdgts.c */
 int reg_match(const char *);
 
-/* menu_hooks.c */
-//void clear_search(void);
+/* menu.c */
 void set_search(char *);
 
 /* kbd.c */
 int getkey();
 
-/* term.c */
+/* screen.c */
 void term_raw();
 

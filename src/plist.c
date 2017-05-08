@@ -20,7 +20,7 @@ static struct __pstat {
 static void pstat_update(struct process *p, int n)
 {
 	pstat.nr += n;
-	if(!p->proc) return; 
+	if(!p->proc) return;
 	switch(p->proc->state) {
 		case 'S': pstat.sl += n; break;
 		case 'R': pstat.rn += n; break;
@@ -28,15 +28,15 @@ static void pstat_update(struct process *p, int n)
 		case 'D': pstat.st += n; break;
 	}
 }
-	
+
 static void proc_del(struct process *p)
-{						
-	*p->prev=p->next;				
+{
+	*p->prev=p->next;
 	if (p->next) p->next->prev = p->prev;
 
-//	LIST_DEL(&p->plist_l);	
-	
-	if (p->proc) p->proc->priv = 0;	
+//	LIST_DEL(&p->plist_l);
+
+	if (p->proc) p->proc->priv = 0;
 	free(p);
 }
 
@@ -48,7 +48,7 @@ static void mark_del(void *vp)
 	for(q = q->child; q; q = q->broth.nx)
 		if (q->priv) mark_del(q->priv);
 	pstat_update(p, -1);
-	p->proc->priv = 0;	
+	p->proc->priv = 0;
 	p->proc = 0;
 }
 
@@ -62,13 +62,13 @@ static void clear_list(void)
 	/*struct list_head *h;
 	struct process *p;
 
-	h = plist.next;	      
+	h = plist.next;
 	while(h != &plist) {
 		h = h->next;
 		p = list_entry(h, struct process, plist_l);
 		proc_del(p);
 	}*/
-		
+
 	struct process *p, *q;
 	for(p = begin; p; p = q){
 		q = p->next;
@@ -91,8 +91,8 @@ static void synchronize(struct wdgt *w)
 		}
 		z = malloc(sizeof *z);
 		if (!z) allocate_error();
-		//allocated++;
-	//	proc_win.d_lines++;
+//		allocated++;
+//		proc_win.d_lines++;
 		memset(z, 0, sizeof *z);
 		scr_linserted(w, l);
 		z->line = l++;
@@ -120,7 +120,7 @@ static void delete_tree_lines(struct wdgt *w)
 			p = p->next;
 			continue;
 		}
-		//delete_line(&proc_win, p->line);
+//		delete_line(&proc_win, p->line);
 		scr_ldeleted(w, p->line);
 		u = p;
 		while(u) {
@@ -138,7 +138,7 @@ static char get_state_color(char state)
 	static char m[]="R DZT?", c[]="\5\2\6\4\7\7";
 	char *s = strchr(m, state);
 	if (!s) return '\3';
-	return c[s - m];	
+	return c[s - m];
 }
 
 static char *prepare_line(struct wdgt *w, struct process *p)
@@ -148,24 +148,24 @@ static char *prepare_line(struct wdgt *w, struct process *p)
 	if (!p) return 0;
 	tree = tree_string(tree_root, p->proc);
 	if(state == 'S') state = ' ';
-	if (show_linenr) 
+	if (show_linenr)
 		offset = snprintf(w->mwin->gbuf, w->mwin->gbsize, "\x6%4d ", p->line + 1);
 	if (offset < 0) return "";
-	if(show_owner) 
-		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s", 
-			p->proc->pid, get_state_color(state), 
-			state, get_owner_name(proc_pid_uid(p->proc->pid)), tree, 
+	if(show_owner)
+		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset ,"\x3%5d %c%c \x3%-8s \x2%s \x3%s",
+			p->proc->pid, get_state_color(state),
+			state, get_owner_name(proc_pid_uid(p->proc->pid)), tree,
 			get_cmdline(p->proc->pid));
-	 else 
+	else
 		snprintf(w->mwin->gbuf+offset, w->mwin->gbsize-offset,"\x3%5d %c%c \x2%s \x3%s",
-			p->proc->pid, get_state_color(state), 
+			p->proc->pid, get_state_color(state),
 			state, tree, get_cmdline(p->proc->pid));
-		
+
 	return w->mwin->gbuf;
 }
 
 /*
- * Find process by its command line. 
+ * Find process by its command line.
  * 't' is type of operation:
  *  0 - search below cursor only
  *  1 - below but including cursor line
@@ -184,7 +184,7 @@ static int  getprocbyname(struct wdgt *w, int t)
 		snprintf(buf, sizeof buf, "%d", p->proc->pid);
 		if(reg_match(buf)) goto found; //return p->line;
 		/* next process owner */
-		if(show_owner && reg_match(get_owner_name(p->uid))) 
+		if(show_owner && reg_match(get_owner_name(p->uid)))
 			goto found; //return p->line;
 		tmp = get_cmdline(p->proc->pid);
 		if(reg_match(tmp)) goto found; // return p->line;
@@ -238,7 +238,7 @@ static pid_t crsr_pid(int line)
 		if(p->line == line) return p->proc->pid;
 	}
 	return 0;
-}	
+}
 static void ptree_periodic(struct wdgt *w)
 {
 	DBG("**** building process tree root %d *****", tree_root);
@@ -264,8 +264,8 @@ void do_signal(struct wdgt *w, int sig, int pid)
 
 static int signal_keys(struct wdgt *w, int key)
 {
-        int signal = 0;
-	
+	int signal = 0;
+
 	if(!(key&KBD_CTRL)) return KEY_SKIPPED;
 	key &= KBD_MASK;
 	switch(key) {
@@ -275,7 +275,7 @@ static int signal_keys(struct wdgt *w, int key)
 	}
 	if(signal) do_signal(w, signal, crsr_pid(w->crsr));
 	return KEY_HANDLED;
-}	
+}
 
 static void *pmsgh(struct wdgt *w, int type, struct wdgt *s, void *d)
 {
@@ -306,9 +306,9 @@ static void ptree_unhide(struct wdgt *w)
 	w->msgh = pmsgh;
 	w->redraw = ptree_redraw;
 	w->wrefresh = scr_wrefresh;
-	WNEED_REDRAW(w);	
+	WNEED_REDRAW(w);
 	w->vy = w->vy = w->crsr = 0;
-}	
+}
 
 static void ptree_hide(struct wdgt *w)
 {
@@ -319,7 +319,7 @@ static void ptree_hide(struct wdgt *w)
 	w->msgh = 0;
 	ptreeinfo(w, 0);
 	bzero(&pstat, sizeof pstat);
-}	
+}
 
 static void root_change(struct wdgt *w)
 {
@@ -335,11 +335,11 @@ static void root_change(struct wdgt *w)
  */
 static void pswitch(struct wdgt *w, int k, int p)
 {
-        if(!WIN_HIDDEN(w)) {
+	if(!WIN_HIDDEN(w)) {
 		if(k == p || k == KBD_ENTER) {
-			if(k != 't') ptree_hide(w); 
+			if(k != 't') ptree_hide(w);
 			return;
-		}		
+		}
 		if(k == 't') {
 			tree_root = INIT_PID;
 			ptree_periodic(w);
@@ -351,17 +351,17 @@ static void pswitch(struct wdgt *w, int k, int p)
 		else if(k == 't') tree_root = INIT_PID;
 		wmsg_send(w, MSND_ESOURCE, eproc);
 		ptree_unhide(w);
-	}	
+	}
 }
 
 static int pkeyh(struct wdgt *w, int key)
 {
-        int ret = KEY_HANDLED;
+	int ret = KEY_HANDLED;
 	int ctrl = key&KBD_MASK;
 	static int pkey;
-	
+
 	/* hide or unhide wdgt */
-	if(key == 't' || key == KBD_ENTER) { 
+	if(key == 't' || key == KBD_ENTER) {
 		pswitch(w, key, pkey);
 		pkey = key;
 		return KEY_HANDLED;
@@ -372,22 +372,24 @@ static int pkeyh(struct wdgt *w, int key)
 		signal_keys(w, key);
 		return ret;
 	}
-        switch(key) {
+	switch(key) {
 		case 'o': show_owner ^= 1; WNEED_REDRAW(w); break;
 		case 'r': ptree_periodic(w); WNEED_REDRAW(w); break;
 		case 'l': show_linenr ^=1 ; WNEED_REDRAW(w); break;
-        /*        case KBD_UP:
+/*
+		case KBD_UP:
 		case KBD_DOWN:
 		case KBD_PAGE_UP:
-		case KBD_PAGE_DOWN: */
-		default:	 ret = scr_keyh(w, key);
+		case KBD_PAGE_DOWN:
+*/
+		default: ret = scr_keyh(w, key);
 	}
-        return ret;
+	return ret;
 }
 
 /*
  * Register all process tree functions here.
- */ 
+ */
 void ptree_reg(struct wdgt *w)
 {
 	w->keyh     = pkeyh;

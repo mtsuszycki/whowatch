@@ -27,7 +27,7 @@
 	if(l) (l)->f.ppv = &((p)->f.nx);	\
 	(l) = (p);				\
 })
-		
+
 #define list_del(p,f) ({				\
 	*(p)->f.ppv = (p)->f.nx;			\
 	if((p)->f.nx) (p)->f.nx->f.ppv = (p)->f.ppv;	\
@@ -38,7 +38,7 @@
 
 #ifdef HAVE_PROCESS_SYSCTL
 int get_all_info(struct kinfo_proc **);
-#endif 
+#endif
 
 struct pinfo {
 	char state;
@@ -121,8 +121,8 @@ static inline struct proc_t* new_proc(int n, char state)
 		p = (struct proc_t*) malloc(sizeof *p);
 	memset(p,0,sizeof *p);
 	p->pid = n;
-	p->state = state;	
-	
+	p->state = state;
+
 	list_add(hash_table[hash_fun(n)], p, hash);
 	num_proc++;
 
@@ -137,7 +137,7 @@ static struct proc_t *validate_proc(int pid, char state)
 	if(pid <= 1) {
 		p->state = state;
 		return p;
-	}	
+	}
 	if(p)
 		list_del(p,mlist);
 	else
@@ -168,7 +168,7 @@ int update_tree(void del(void*))
 	int n = num_proc;
 	change_head(main_list,old_list,mlist);
 	main_list = 0;
-	
+
 #ifdef HAVE_PROCESS_SYSCTL
 	el = get_all_info(&pi);
 	for(i = 0; i < el; i++) {

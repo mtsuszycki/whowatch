@@ -1,4 +1,4 @@
-/* 
+/*
  * Screen manipulation routines. Most of the code related to ncurses
  * is here.
  */
@@ -20,14 +20,14 @@ char *help_line[] = {
 static void scr_color_init(void)
 {
 	init_pair(1,COLOR_CYAN,COLOR_BLACK);
-        init_pair(2,COLOR_GREEN,COLOR_BLACK);
-        init_pair(3,COLOR_WHITE,COLOR_BLACK);
+	init_pair(2,COLOR_GREEN,COLOR_BLACK);
+	init_pair(3,COLOR_WHITE,COLOR_BLACK);
 	init_pair(4,COLOR_MAGENTA,COLOR_BLACK);
 	init_pair(5,COLOR_RED,COLOR_BLACK);
 	init_pair(6,COLOR_YELLOW,COLOR_BLACK);
 	init_pair(7,COLOR_RED, COLOR_CYAN);
- 	init_pair(8,COLOR_BLACK, COLOR_CYAN);
- 	init_pair(9,COLOR_BLACK, COLOR_WHITE);
+	init_pair(8,COLOR_BLACK, COLOR_CYAN);
+	init_pair(9,COLOR_BLACK, COLOR_WHITE);
 }
 
 void scr_wresize(struct wdgt *w, u32 y, u32 x)
@@ -40,10 +40,10 @@ static void scr_box_text(struct wdgt *w, char *s, u8 c)
 	int l, pos;
 	if(!s) return;
 	l = strlen(s);
-	//pos = (w->xsize-w->x-l)/2; 	/*    center 	*/
+//	pos = (w->xsize-w->x-l)/2; 	/*    center 	*/
 	pos = w->xsize-w->x-l;		/*        right	*/
 //	pos = w->x+1;			/* left         */
-	
+
 	mvwaddnstr((WINDOW*)w->decor, w->ysize-w->y+2, pos , s, l);
 }
 
@@ -65,11 +65,11 @@ void scr_box(struct wdgt *w, char *s, u8 c)
 	/* box not yet created, do it now */
 	DBG("Creating box for '%s'", w->name);
 	w->decor = newpad(w->ysize - w->y + 3, w->xsize - w->x + 3);
-        if(!w->decor) return;
+	if(!w->decor) return;
 	sadd_box(w);
 	wbkgd(w->decor, COLOR_PAIR(c));
 	scr_box_text(w, s, c);
-}		
+}
 
 void scr_decor_resize(struct wdgt *w)
 {
@@ -84,13 +84,13 @@ void scr_doupdate(void)
 }
 
 /*
- * Create new window  
+ * Create new window
  */
 void *scr_newwin(u32 x, u32 y, u32 xsize, u32 ysize)
 {
 	WINDOW *w;
 	if(!(w = newwin(ysize, xsize, y, x))) return 0;
-	
+
 	wbkgd(w, COLOR_PAIR(8));
 	return w;
 }
@@ -98,18 +98,18 @@ void *scr_newwin(u32 x, u32 y, u32 xsize, u32 ysize)
 static void crsr_off(struct wdgt *w, int line)
 {
 	int i;
-DBG("DISABLING cursor on line %d", line);	
+DBG("DISABLING cursor on line %d", line);
 	wattrset(CWND(w), A_NORMAL);
-//	mvwchgat(CWND(w), line, 0, w->xsize+1, A_NORMAL, 0, 0);	
+//	mvwchgat(CWND(w), line, 0, w->xsize+1, A_NORMAL, 0, 0);
 	for(i = 0; curs_buf[i]; i++)
 		waddch(CWND(w), curs_buf[i]);
 }
 
 static void crsr_on(struct wdgt *w, int line)
 {
-	DBG("ENABLING in %s on line %d", w->name, line);	
+	DBG("ENABLING in %s on line %d", w->name, line);
 	mvwinchnstr(CWND(w), line, 0, curs_buf, w->xsize+1);
-	mvwchgat(CWND(w), line, 0, w->xsize+1, A_REVERSE, 0, 0);	
+	mvwchgat(CWND(w), line, 0, w->xsize+1, A_REVERSE, 0, 0);
 	wattrset(CWND(w), A_NORMAL);
 }
 
@@ -130,8 +130,8 @@ static void scr_lecho(struct wdgt *w, char *s, int n)
 {
 	waddnstr(CWND(w), s, n);
 	w->nlines++;
-	//if(w->crsr == w->nlines) crsr_on(w, w->crsr);
-}	
+//	if(w->crsr == w->nlines) crsr_on(w, w->crsr);
+}
 
 /* Start numbering lines from zero */
 void scr_output_start(struct wdgt *w)
@@ -144,7 +144,7 @@ void scr_output_start(struct wdgt *w)
  */
 void scr_output_end(struct wdgt *w)
 {
-	/* there are less lines than before and all 
+	/* there are less lines than before and all
 	 * of them are unvisible now
 	 */
 	if(w->vy >= w->nlines) {
@@ -169,9 +169,9 @@ void scr_clr_set(struct wdgt *w, int n)
 void scr_crsr_jmp(struct wdgt *w, int l)
 {
 //	int jmp = l - w->crsr;
-	int size =  w->ysize - w->y - 1;
+	int size = w->ysize - w->y - 1;
 	crsr_move(w, w->crsr, l);
-	//DBG("size %d, crsr %d", size, w->crsr);	
+//	DBG("size %d, crsr %d", size, w->crsr);
 	if(l >= w->vy && l < w->vy + size) return;
 	w->vy = w->crsr - size;
 }
@@ -206,7 +206,7 @@ void scr_linserted(struct wdgt *w, int line)
  * are deleted above it.
  */
 void scr_ldeleted(struct wdgt *w, int l)
-{	
+{
 	if(l >= w->crsr) return;
 	if(!w->vy) w->crsr--;
 	else {
@@ -221,12 +221,12 @@ static inline void srefresh(struct wdgt *w)
 
 void scr_wrefresh(struct wdgt *w)
 {
-	DBG("'%s', %d %d %d %d %d %d", w->name, w->vy, w->vx, w->y, w->x, 
+	DBG("'%s', %d %d %d %d %d %d", w->name, w->vy, w->vx, w->y, w->x,
 			w->ysize, w->xsize);
 	if(w->decor) pnoutrefresh(w->decor, 0, 0, w->y-1, w->x-1, w->ysize+1, w->xsize+1);
 	srefresh(w);
 }
-	
+
 /*
  * Print string that contains formatting characters (for colors)
  */
@@ -244,9 +244,9 @@ int scr_addfstr(struct wdgt *w, char *s, u32 y, u32 x)
 		wattrset(CWND(w), COLOR_PAIR(*p));
 		q = p + 1;
 	}
-	scr_lecho(w, q, p-q); 
+	scr_lecho(w, q, p-q);
 	return 0;
-}	
+}
 
 void scr_werase(struct wdgt *w)
 {
@@ -268,17 +268,17 @@ static inline int s_nleft(struct wdgt *w)
 static int kbd_page_up(struct wdgt *w)
 {
 	int left = w->vy;
-	int n = MIN(left, w->ysize - w->y); 
-	
+	int n = MIN(left, w->ysize - w->y);
+
 	if(left > 0) w->vy -= n;
 	else {
 		crsr_move(w, w->crsr, 0);
-		return  0;
+		return 0;
 	}
 	crsr_move(w, w->crsr, w->crsr-n);
 //	w->crsr -= n;
 	return 0;
-}	
+}
 
 static int kbd_up(struct wdgt *w)
 {
@@ -300,8 +300,8 @@ static int kbd_up(struct wdgt *w)
  */
 static int kbd_down(struct wdgt *w)
 {
-	int nleft = s_nleft(w); 
-	
+	int nleft = s_nleft(w);
+
 	/* more lines to display and cursor at the end of screen */
 	/* first wdgts without cursor */
 	if(w->crsr == -1) {
@@ -321,14 +321,14 @@ static int kbd_down(struct wdgt *w)
 static int kbd_page_down(struct wdgt *w)
 {
 	int nleft = s_nleft(w);
-	int n = MIN(nleft, w->ysize - w->y); 
-	
+	int n = MIN(nleft, w->ysize - w->y);
+
 	if(nleft > 0) w->vy += n;
 	else {
 		crsr_move(w, w->crsr, w->nlines);
 		return 0;
 	}
-	if(w->crsr != -1) 
+	if(w->crsr != -1)
 		crsr_move(w, w->crsr, w->crsr+n);
 	return 0;
 }
@@ -343,16 +343,16 @@ static int kbd_home(struct wdgt *w)
 
 static int kbd_end(struct wdgt *w)
 {
-	int nleft = s_nleft(w); 
+	int nleft = s_nleft(w);
 
 	if(nleft > 0) w->vy += nleft;
-	
+
 	if(w->crsr < w->nlines) {
 		crsr_move(w, w->crsr, w->crsr+nleft);
 		return KEY_HANDLED;
 	}
 	return KEY_SKIPPED;
-}	
+}
 
 static int kbd_right(struct wdgt *w)
 {
@@ -360,20 +360,20 @@ static int kbd_right(struct wdgt *w)
 	if(w->crsr == -1 && w->vx < w->pxsize - w->x - w->xsize) w->vx++;
 	return 0;
 }
-	
+
 static int kbd_left(struct wdgt *w)
 {
 	if(w->crsr == -1 && w->vx) w->vx--;
 	return 0;
 }
-	
+
 int scr_keyh(struct wdgt *w, int key)
 {
 	int ret = KEY_HANDLED;
 	DBG("calling key %c for %s", key, w->name);
 	switch(key) {
 		case KBD_DOWN: 		kbd_down(w); break;
-		case KBD_UP:   		kbd_up(w); break;
+		case KBD_UP:		kbd_up(w); break;
 		case KBD_PAGE_DOWN:	kbd_page_down(w); break;
 		case KBD_PAGE_UP:	kbd_page_up(w); break;
 		case KBD_LEFT:		kbd_left(w); break;
@@ -381,7 +381,7 @@ int scr_keyh(struct wdgt *w, int key)
 		case KBD_HOME:		ret = kbd_home(w); break;
 		case KBD_END:		ret = kbd_end(w); break;
 		default: 		ret = KEY_SKIPPED;
-	} 
+	}
 	return ret;
 }
 
@@ -404,30 +404,30 @@ void term_rest()
 	tcsetattr(0, TCSANOW, &tio);
 }
 
-int old_curs_vis;	/* this is the cursor mode, set to normal as default */ 
+int old_curs_vis;	/* this is the cursor mode, set to normal as default */
 void curses_init(void)
 {
 	initscr();
 	/* disable cursor */
-        old_curs_vis = curs_set(0);                   
-        start_color();
+	old_curs_vis = curs_set(0);
+	start_color();
 	scr_color_init();
 	cbreak();
 /*
-        nodelay(stdscr,TRUE);
+	nodelay(stdscr,TRUE);
 	keypad(stdscr, FALSE);
 	meta(stdscr, FALSE);
 */
 //	scrollok(main_win, TRUE);
-        noecho();
+	noecho();
 	term_raw();
-}				
+}
 
 void curses_end()
 {
 	term_rest();
 	endwin();
 	/* enable cursor */
-        curs_set(old_curs_vis);          
+	curs_set(old_curs_vis);
 }
 

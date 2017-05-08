@@ -1,4 +1,4 @@
-/* 
+/*
  * Menu implementation. All bindings are defined in menu_hooks.c
  * Menu/submenu definition is static - see item_bind[].
  */
@@ -16,7 +16,7 @@ static struct menu_t {
 	WINDOW *wd;
 	struct list_head submenus;
 	unsigned short cols;
-} menu;	
+} menu;
 
 struct submenu_t {
 	struct list_head l_menu;
@@ -29,7 +29,7 @@ struct item_t {
 	struct list_head l_submenu;
 	char *name, *descr;
 	void (*hook)(void);
-};	
+};
 
 static struct submenu_t *cur_submenu;
 static struct item_t *cur_item;
@@ -47,13 +47,13 @@ static char *prev_search;
 
 void  m_exit(void)
 {
-//dolog(__FUNCTION__":entering\n");
+//	dolog(__FUNCTION__":entering\n");
 	prg_exit("");
-}	
+}
 void m_details(void)
 {
 	return;
-	//sub_keys('d');
+//	sub_keys('d');
 }
 
 void m_kill(void)
@@ -127,7 +127,7 @@ static void print_about(void *unused)
 void m_about(void)
 {
 	;
-	//new_sub(print_about);
+//	new_sub(print_about);
 }
 /*
 static void __load_plugin(char *s)
@@ -136,8 +136,8 @@ static void __load_plugin(char *s)
 //	char *err;
 //	if(!(err = plugin_load(s)))
 //		info_box(" Message ", "Plugin has been loaded successfully.");
-//	else if(*s) 
-	//info_box(" Error ", err);
+//	else if(*s)
+//	info_box(" Error ", err);
 }
 */
 
@@ -149,7 +149,7 @@ void m_load_plugin(void)
 /*
 static void search(char *s)
 {
-	do_search(s);	
+	do_search(s);
 }
 */
 
@@ -165,7 +165,7 @@ void set_search(char *s)
 	prev_search = s;
 }
 
-void m_search(void) 
+void m_search(void)
 {
 	;
 //	input_box(" Search ", "Pattern ", prev_search, search);
@@ -195,14 +195,14 @@ static struct item_bind_t item_bind[] = {
 };
 
 /*
- * Add menu to the menu bar 
+ * Add menu to the menu bar
  */
 static struct submenu_t *add_submenu(char *s)
 {
 	struct submenu_t *t;
 	static int pos = TITLE_START;
-	//DBG("Adding another string");	
-	//DBG("Adding str %s %d", s, strlen(s));
+//	DBG("Adding another string");
+//	DBG("Adding str %s %d", s, strlen(s));
 	t = calloc(1, sizeof *t);
 	if(!t) exit(0); //prg_exit(__FUNCTION__": cannot allocate memory.");
 	t->title = s;
@@ -220,11 +220,11 @@ static struct submenu_t *find_submenu(char *title)
 	struct submenu_t *t;
 	list_for_each(h, &menu.submenus) {
 		t = list_entry(h, struct submenu_t, l_menu);
-		if(!strncasecmp(t->title, title, strlen(title))) 
+		if(!strncasecmp(t->title, title, strlen(title)))
 			return t;
 	}
 	return 0;
-}			
+}
 
 static void add_item(char *title, struct item_t *i)
 {
@@ -232,12 +232,12 @@ static void add_item(char *title, struct item_t *i)
 	static unsigned short longest;
 	int len = strlen(i->name);// + strlen(i->descr) + 1;
 	if(!(t = find_submenu(title))) {
-////dolog(__FUNCTION__ ": cannot find title %s\n", title);
+//		dolog(__FUNCTION__ ": cannot find title %s\n", title);
 		return;
 	}
 	if(len > longest) longest = len;
-////dolog(__FUNCTION__": %d %d %d\n", longest, strlen(i->descr), t->cols);	
-	if(longest + strlen(i->descr) + 3 > t->cols) 
+//	dolog(__FUNCTION__": %d %d %d\n", longest, strlen(i->descr), t->cols);
+	if(longest + strlen(i->descr) + 3 > t->cols)
 		t->cols = 3 + longest + strlen(i->descr);
 	if(!t->rows) t->rows = 3; /* make space for a border line */
 	else t->rows++;
@@ -272,12 +272,12 @@ void menu_refresh(void)
 }
 
 static void set_size(void)
-{	
+{
 	;
 //	menu.cols = screen_cols;
 }
 
-/* 
+/*
  * Print menu titles inside main menu bar.
  */
 static void titles_print(void)
@@ -294,7 +294,7 @@ static void titles_print(void)
 		waddstr(menu.wd, "  ");
 		pos += strlen(t->title) + TITLE_STEP;
 	}
-}	
+}
 
 static void submenu_create(struct submenu_t *t)
 {
@@ -302,22 +302,22 @@ static void submenu_create(struct submenu_t *t)
 	if(!submenu_wd) prg_exit("Cannot create ncurses pad.");
 	wbkgd(submenu_wd, COLOR_PAIR(9));
 	werase(submenu_wd);
- 	box(submenu_wd, ACS_VLINE, ACS_HLINE);	
-}	
+	box(submenu_wd, ACS_VLINE, ACS_HLINE);
+}
 
 
 void menu_init(void)
 {
 	int i;
 	struct item_t *it;
-	
+
 	INIT_LIST_HEAD(&menu.submenus);
 	for(i = 0; i < sizeof(submenus)/sizeof(char*); i++)
 		add_submenu(submenus[i]);
 	for(i = 0; i < sizeof item_bind/sizeof(struct item_bind_t); i++) {
 		it = &item_bind[i].item;
 		add_item(submenus[item_bind[i].submenu], it);
-	}	
+	}
 }
 
 static void menu_create(void)
@@ -341,35 +341,35 @@ static void menu_destroy()
 	item_cursor = 0;
 	cur_item = 0;
 //	redrawwin(main_win);
-//redrawwin(info_win.wd);
+//	redrawwin(info_win.wd);
 }
 
 static void highlight_item(struct submenu_t *t, int i)
 {
-	if(item_cursor) 
+	if(item_cursor)
 		mvwchgat(submenu_wd, item_cursor, 1, t->cols-2, A_NORMAL, 9, 0);
 	item_cursor += i;
-	mvwchgat(submenu_wd, item_cursor, 1, t->cols-2, 
+	mvwchgat(submenu_wd, item_cursor, 1, t->cols-2,
 		A_REVERSE, 9, 0);
 	return;
-} 
+}
 
 static int change_item(struct list_head *h)
 {
 assert(cur_item);
 	if(h == &cur_submenu->items) return 0;
 	cur_item = list_entry(h, struct item_t, l_submenu);
-	return 1; 
+	return 1;
 }
 
 static void change_submenu(struct list_head *h)
 {
 	if(h == &menu.submenus) return;
-assert(cur_submenu);	
-	mvwchgat(menu.wd, 0, cur_submenu->coord_x, 
+assert(cur_submenu);
+	mvwchgat(menu.wd, 0, cur_submenu->coord_x,
 		strlen(cur_submenu->title)+4, A_NORMAL, 9, 0);
 
-	cur_submenu = list_entry(h, struct submenu_t, l_menu); 
+	cur_submenu = list_entry(h, struct submenu_t, l_menu);
 	item_cursor = 0;
 	if(submenu_wd) {
 		cur_item = list_entry(cur_submenu->items.prev, struct item_t, l_submenu);
@@ -377,22 +377,22 @@ assert(cur_submenu);
 		submenu_create(cur_submenu);
 		submenu_print(cur_submenu);
 		highlight_item(cur_submenu, 1);
-	}	
-	mvwchgat(menu.wd, 0, cur_submenu->coord_x, 
+	}
+	mvwchgat(menu.wd, 0, cur_submenu->coord_x,
 		strlen(cur_submenu->title)+4, A_REVERSE, 9, 0);
 	wnoutrefresh(menu.wd);
 //	submenu_refresh(cur_submenu);
-//redrawwin(main_win);
-//wnoutrefresh(info_win.wd);
-//redrawwin(info_win.wd);
-}	
+//	redrawwin(main_win);
+//	wnoutrefresh(info_win.wd);
+//	redrawwin(info_win.wd);
+}
 
 static int submenu_show(void)
 {
 	if(cur_item) return 1;
 	submenu_create(cur_submenu);
 	submenu_print(cur_submenu);
-	submenu_refresh(cur_submenu);	
+	submenu_refresh(cur_submenu);
 	cur_item = list_entry(cur_submenu->items.prev, struct item_t, l_submenu);
 	highlight_item(cur_submenu, 1);
 	return 0;
@@ -407,7 +407,7 @@ int menu_keys(int key)
 		return 1;
 	}
 	if(!menu.wd) return 0;
-//dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);	
+//	dolog(__FUNCTION__"submenu_wd %p\n", submenu_wd);
 	switch(key) {
 	case KBD_ESC:
 		menu_destroy();
@@ -419,13 +419,13 @@ int menu_keys(int key)
 		change_submenu(cur_submenu->l_menu.next);
 		break;
 	case KBD_DOWN:
-		if(!submenu_show()) return 1; 
+		if(!submenu_show()) return 1;
 		if(change_item(cur_item->l_submenu.prev))
 			highlight_item(cur_submenu, 1);
-		//dolog(__FUNCTION__": cur item %s\n", cur_item->name);
-		break;	
+//		dolog(__FUNCTION__": cur item %s\n", cur_item->name);
+		break;
 	case KBD_UP:
-		if(!submenu_show()) return 1; 
+		if(!submenu_show()) return 1;
 		if(change_item(cur_item->l_submenu.next))
 			highlight_item(cur_submenu, -1);
 		break;
@@ -433,20 +433,20 @@ int menu_keys(int key)
 		if(cur_item) {
 			if(cur_item->hook) cur_item->hook();
 			menu_destroy();
-		}	
+		}
 		break;
 	case 'q':
 		menu_destroy();
 		break;
-	default: 
-//dolog(__FUNCTION__": [%d] skipped\n", key);
+	default:
+//		dolog(__FUNCTION__": [%d] skipped\n", key);
 		return KEY_HANDLED;
 	}
-//dolog(__FUNCTION__":[%d] accepted\n", key);
+//	dolog(__FUNCTION__":[%d] accepted\n", key);
 	return KEY_HANDLED;
 }
 
-/* 
+/*
  * Called by resize() in main if SIGWINCH was delivered.
  */
 void menu_resize(void)

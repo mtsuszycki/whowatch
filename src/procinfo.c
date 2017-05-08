@@ -1,4 +1,4 @@
-/* 
+/*
  * Get process info (ppid, tpgid, name of executable and so on).
  * This is OS dependent: in Linux reading files from "/proc" is
  * needed, in FreeBSD and OpenBSD sysctl() is used (which
@@ -35,28 +35,28 @@ struct procinfo
 #ifndef HAVE_PROCESS_SYSCTL
 void get_info(int pid, struct procinfo *p)
 {
-    	char buf[32];
-    	FILE *f;
+	char buf[32];
+	FILE *f;
 
 	p->ppid = -1;
 	p->cterm = -1;
 	/*
-	 *  getting uid by stat() on "/proc/pid" is in
-	 * separate function, see below get_stat() 
+	 * getting uid by stat() on "/proc/pid" is in
+	 * separate function, see below get_stat()
 	 */
 	p->euid = -1;
 	p->stat = ' ';
 	p->tpgid = -1;
 	strcpy(p->exec_file, "can't access");
-    	snprintf(buf, sizeof buf, "/proc/%d/stat", pid);
-    	if (!(f = fopen(buf,"rt"))) 
-    		return;
-    	if(fscanf(f,"%*d %128s %*c %d %*d %*d %*d %d",
-    			p->exec_file, &p->ppid, &p->tpgid) != 3) {
-    		fclose(f);
-    		return;
-    	}
-    	fclose(f);	
+	snprintf(buf, sizeof buf, "/proc/%d/stat", pid);
+	if (!(f = fopen(buf,"rt")))
+		return;
+	if(fscanf(f,"%*d %128s %*c %d %*d %*d %*d %d",
+			p->exec_file, &p->ppid, &p->tpgid) != 3) {
+		fclose(f);
+		return;
+	}
+	fclose(f);
 	p->exec_file[EXEC_FILE] = '\0';
 }
 #else
@@ -64,23 +64,23 @@ int fill_kinfo(struct kinfo_proc *info, int pid)
 {
 	int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, pid };
 	size_t len = sizeof *info;
-	if(sysctl(mib, 4, info, &len, 0, 0) == -1) 
+	if(sysctl(mib, 4, info, &len, 0, 0) == -1)
 		return -1;
 	return len?0:-1;
 }
-		
+
 void get_info(int pid, struct procinfo *p)
 {
-	struct kinfo_proc info;	
+	struct kinfo_proc info;
 	p->ppid = -1;
 	p->cterm = -1;
 	p->euid = -1;
 	p->stat = ' ';
 	p->tpgid = -1;
 	strcpy(p->exec_file, "can't access");
-	
+
 	if(fill_kinfo(&info, pid) == -1) return;
-	
+
 	p->ppid = info.kinfo_ppid;
 	p->tpgid = info.kinfo_tpgid;
 	p->euid = info.kinfo_svuid;
@@ -110,7 +110,7 @@ int get_term(char *tty)
 	struct stat s;
 	char buf[32];
 	memset(buf, 0, sizeof buf);
-	snprintf(buf, sizeof buf - 1,  "/dev/%s", tty);
+	snprintf(buf, sizeof buf - 1, "/dev/%s", tty);
 	if(stat(buf, &s) == -1) return -1;
 	return s.st_rdev;
 }
@@ -126,11 +126,11 @@ int get_login_pid(char *tty)
 	size_t len;
 	struct kinfo_proc *info;
 	struct procinfo p;
-	
+
 	/* this is for ftp logins */
-	if(!strncmp(tty, "ftp", 3)) 
+	if(!strncmp(tty, "ftp", 3))
 		return atoi(tty+3);
-		
+
 	if((t = get_term(tty)) == -1) return -1;
 	mib[3] = t;
 	if(sysctl(mib, 4, 0, &len, 0, 0) == -1)
@@ -180,25 +180,25 @@ int get_all_info(struct kinfo_proc **info)
 		return 0;
 	return el;
 }
-#endif 
+#endif
 
-/* 
+/*
  * Return the complete command line for the process
  */
 #ifndef HAVE_PROCESS_SYSCTL
 char *get_cmdline(int pid)
 {
-        static char buf[512];
+	static char buf[512];
 	int fd, i, n;
 	struct procinfo p;
 	char *s;
-//        if(!full_cmd) goto no_full;
+//	if(!full_cmd) goto no_full;
 	snprintf(buf, sizeof buf, "/proc/%d/cmdline", pid);
 	if((fd = open(buf, O_RDONLY)) == -1)
 		return "-";
 	n = read(fd, buf, sizeof buf);
 	close(fd);
- 	if(n == -1) return "-";
+	if(n == -1) return "-";
 	if(!n) goto no_full;
 	for(i = 0; i < n; i++) if(!buf[i]) buf[i] = ' ';
 	buf[i-1] = 0;
@@ -212,7 +212,7 @@ no_full:
 	memcpy(buf, s, n);
 	return buf;
 //	strncpy(buf, t, sizeof buf - 1);
-  //      return buf;
+//	return buf;
 }
 #endif
 
@@ -230,7 +230,7 @@ char *get_cmdline(int pid)
 {
 	static char buf[512];
 	struct kinfo_proc info;
-	
+
 	char **p, *s = buf;
 	bzero(buf, sizeof buf);
 	if(fill_kinfo(&info, pid) == -1)
@@ -242,20 +242,20 @@ char *get_cmdline(int pid)
 	p = kvm_getargv(kd, &info, 0);
 	if(!p) 	return buf;
 	for(; *p; p++) {
-		*s++ = ' ';	
+		*s++ = ' ';
 		strncpy(s, *p, endof(buf) - s);
 		s += strlen(*p);
 		if(s >= endof(buf) - 1) break;
 	}
-	buf[sizeof buf - 1] = 0; 
+	buf[sizeof buf - 1] = 0;
 	return buf + 1;
 #else
 	return buf;
 #endif
 }
 #endif
-	 
-/* 
+
+/*
  * Get process group ID of the process which currently owns the tty
  * that the process is connected to and return its command line.
  */
@@ -263,7 +263,7 @@ char *get_w(int pid)
 {
 	struct procinfo p;
 	get_info(pid, &p);
-        return get_cmdline(p.tpgid);
+	return get_cmdline(p.tpgid);
 }
 
 /*
@@ -280,7 +280,7 @@ int proc_pid_uid(u32 pid)
 {
 	char buf[32];
 	struct stat s;
-        
+
 	snprintf(buf, sizeof buf, "/proc/%d", pid);
 	if(stat(buf, &s) == -1) return -1;
 	return s.st_uid;
@@ -301,7 +301,7 @@ int proc_getloadavg(double d[], int l)
 #endif
 }
 
-/* 
+/*
  * It really shouldn't be in this file.
  * Count idle time.
  */
@@ -310,13 +310,13 @@ char *count_idle(char *tty)
 	struct stat st;
 	static char buf[32];
 	time_t idle_time;
-	
+
 	sprintf(buf,"/dev/%s",tty);
-	
+
 	if(stat(buf,&st) == -1) return "?";
-	idle_time = time(0) - st.st_atime;	
-	
-	if (idle_time >= 3600 * 24) 
+	idle_time = time(0) - st.st_atime;
+
+	if (idle_time >= 3600 * 24)
 		sprintf(buf,"%ldd", (long) idle_time/(3600 * 24) );
 	else if (idle_time >= 3600){
 		time_t min = (idle_time % 3600) / 60;
@@ -326,7 +326,7 @@ char *count_idle(char *tty)
 		sprintf(buf,"%ld", (long) idle_time/60);
 	else
 		sprintf(buf," ");
-	
+
 	return buf;
 }
 

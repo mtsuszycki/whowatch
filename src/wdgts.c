@@ -5,12 +5,12 @@
 
 static regex_t cur_reg;
 
-/* 
+/*
  * Called by getprocbyname() and user_search(), instead of simple strncmp().
  */
 inline int reg_match(const char *s)
 {
-	return !regexec(&cur_reg, s, 0, 0, REG_NOTEOL); 
+	return !regexec(&cur_reg, s, 0, 0, REG_NOTEOL);
 }
 
 static int do_search(struct wdgt *w, char *s, int type)
@@ -40,7 +40,7 @@ static void hlp_wrefresh(struct wdgt *w)
 static void hlp_redraw(struct wdgt *w)
 {
 	scr_addfstr(w, cur_hlp, 0, 0);
-}	
+}
 
 static void *hlp_msgh(struct wdgt *w, int type, struct wdgt *sndr, void *s)
 {
@@ -78,7 +78,7 @@ static void ido_search(struct wdgt *w, int type)
 	if(do_search(w, w->mwin->gbuf, type) == 2 && !type) {
 		do_search(w, w->mwin->gbuf, 2);
 		stype = 2;
-	}	
+	}
 	wmove(CWND(w), 0, cx);
 }
 
@@ -92,7 +92,7 @@ static void input_unhide(struct wdgt *w)
 	curs_set(1);
 	w->wrefresh = inpt_rfr;
 	nc = 0;
-}	
+}
 
 static int ikbd(struct wdgt *w, int key)
 {
@@ -110,7 +110,7 @@ static int ikbd(struct wdgt *w, int key)
 	}
 	waddch((WINDOW*)w->wd, key);
 	cx++;
-//SEARCH:	
+//SEARCH:
 //	ido_search(w, 0);
 	ido_search(w, 1);
 	return KEY_FINAL;
@@ -127,13 +127,14 @@ static int ikeyh(struct wdgt *w, int key)
 	}
 	switch(key) {
 		case KBD_ESC: ihide(w); break;
-//	case KBD_DEL: wmove(w->wd, 0, --cx); break;
-		case KBD_ENTER: if(cx != cxs) {
-		//			DBG("Doing search stype %d", stype);
-					ido_search(w, 0); 
-				}
-			        break; //ihide(w);
-		default:  return ikbd(w, key);
+//		case KBD_DEL: wmove(w->wd, 0, --cx); break;
+		case KBD_ENTER:
+			if(cx != cxs) {
+//				DBG("Doing search stype %d", stype);
+				ido_search(w, 0);
+			}
+			break; //ihide(w);
+		default: return ikbd(w, key);
 	}
 	return KEY_FINAL;
 }
@@ -149,12 +150,12 @@ void input_reg(struct wdgt *w)
 
 static char *get_load()
 {
-        double d[3] = { 0, 0, 0};
-        static char buf[32];
-	
-        if(proc_getloadavg(d, 3) == -1) return "";
-        snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
-        return buf;
+	double d[3] = { 0, 0, 0};
+	static char buf[32];
+
+	if(proc_getloadavg(d, 3) == -1) return "";
+	snprintf(buf, sizeof buf, "load: %.2f, %.2f, %.2f", d[0], d[1], d[2]);
+	return buf;
 }
 
 static void *infomsg(struct wdgt *w, int type, struct wdgt *s, void *d)
@@ -165,7 +166,7 @@ static void *infomsg(struct wdgt *w, int type, struct wdgt *s, void *d)
 		wclrtoeol((WINDOW*)w->wd);
 		scr_wrefresh(w);
 		return (void*)1;
-	}	
+	}
 	scr_attr_set(w, A_BOLD);
 	scr_maddstr(w, d, 1, w->x, strlen(d)+1);
 	scr_attr_set(w, A_NORMAL);

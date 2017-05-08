@@ -3,7 +3,7 @@
 whowatch \- console, interactive, process and users monitoring tool.
 .SH DESCRIPTION
 \fBWhowatch\fR is an console, interactive users and process monitoring
-tool. 
+tool.
 It displays information about the users currently logged on to the machine, in real-time.
 Besides standard information (login name, tty, host, user's process),
 the type of the connection (ie. telnet or ssh) is shown.
@@ -11,12 +11,12 @@ Display of users command line can be switch to tty idle time.
 Certain user can be selected and his processes tree may be viewed as well
 as tree of all system processes. Tree may be displayed with additional
 column that shows owner of each process.
-In the process tree mode SIGINT and SIGKILL signals can be sent to the 
+In the process tree mode SIGINT and SIGKILL signals can be sent to the
 selected process. Killing processes is just as simple and fun as deleting
 lines on the screen.
 .PP
 .nh
-\fBWhowatch\fR has no command line options or configuration file. 
+\fBWhowatch\fR has no command line options or configuration file.
 All actions are performed in real time by pressing following keys:
 .PP
 Users list mode:
@@ -46,10 +46,10 @@ cursor movement
 .B 'enter'
 go back to users list
 .TP
-.B 'o' 
+.B 'o'
 show processes owners
 .TP
-.B 'c' 
+.B 'c'
 full command line on/off. Disabling full command line can save CPU time.
 It can give you also some additional information about process executable.
 .TP
@@ -93,12 +93,12 @@ Because lack of ut_pid in utmp and wtmp structures
 in *BSD systems, program tries to obtain pid of a login shell by analizing
 processes controlling terminal and processes names. Under some conditions
 it may lead to incorrect results ie. there will be incorrect processes
-tree associated with user's session. 
+tree associated with user's session.
 
 .SH "AUTHOR"
 .nf
-Michal Suszycki <mike@wizard.ae.krakow.pl>, 
+Michal Suszycki <mike@wizard.ae.krakow.pl>,
 http://wizard.ae.krakow.pl/~mike
-Tree functions written by Jan Bobrowski <jb@wizard.ae.krakow.pl>, 
+Tree functions written by Jan Bobrowski <jb@wizard.ae.krakow.pl>,
 http://wizard.ae.krakow.pl/~jb
 .fi

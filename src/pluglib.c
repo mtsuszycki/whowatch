@@ -8,10 +8,10 @@ void println(const char *t, ...)
 {
 	int n;
 	char buf[SUBWIN_COLS];
-        va_list ap;
-        va_start(ap, t);
-        n = vsnprintf(buf, sizeof buf, t, ap);
-  	scr_addstr(exti, buf, n); 
+	va_list ap;
+	va_start(ap, t);
+	n = vsnprintf(buf, sizeof buf, t, ap);
+	scr_addstr(exti, buf, n);
 	va_end(ap);
 }
 
@@ -24,9 +24,9 @@ void print(const char *t, ...)
 {
 	int n;
 	char buf[SUBWIN_COLS];
-        va_list ap;
-        va_start(ap, t);
-        n = vsnprintf(buf, sizeof buf, t, ap);
+	va_list ap;
+	va_start(ap, t);
+	n = vsnprintf(buf, sizeof buf, t, ap);
 	waddstr((WINDOW*)exti->wd, buf);
 	va_end(ap);
 }
@@ -50,13 +50,13 @@ void title(const char *t, ...)
 {
 	int n;
 	char buf[SUBWIN_COLS];
-        va_list ap;
+	va_list ap;
 	boldon();
-        va_start(ap, t);
-        n = vsnprintf(buf, sizeof buf, t, ap);
+	va_start(ap, t);
+	n = vsnprintf(buf, sizeof buf, t, ap);
 	waddstr((WINDOW*)exti->wd, buf);
-	//scr_addstr(exti, buf, n);
-        va_end(ap);
+//	scr_addstr(exti, buf, n);
+	va_end(ap);
 	boldoff();
 }
 

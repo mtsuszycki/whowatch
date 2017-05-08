@@ -13,24 +13,24 @@
 
 void dolog(const char *t, ...)
 {
-        va_list ap;
+	va_list ap;
 	static FILE *logfile;
-        char *c;
-        
+	char *c;
+
 	time_t tm = time(0);
 	if(!logfile) {
 		logfile = fopen("/var/log/whowatch.log", "a");
 		if(!logfile) return;
 		fprintf(logfile, " #############\n");
 	}
-        c = ctime(&tm);
-        *(c + strlen(c) - 1) = 0;
-        fprintf(logfile, "%s: ", c);
-        va_start(ap, t);
-        vfprintf(logfile, t, ap);
-        va_end(ap);
+	c = ctime(&tm);
+	*(c + strlen(c) - 1) = 0;
+	fprintf(logfile, "%s: ", c);
+	va_start(ap, t);
+	vfprintf(logfile, t, ap);
+	va_end(ap);
 	fprintf(logfile, "\n");
-        fflush(logfile);
+	fflush(logfile);
 }
 
 struct _block_tbl_t {
@@ -50,7 +50,7 @@ static struct _block_tbl_t *new_block(int size, struct list_head *h)
 	return tmp;
 }
 
-/* 
+/*
  * Returns address of unused memory space. If necessary
  * allocate new block.
  */
@@ -113,5 +113,5 @@ int i = 0;
 FOUND:
 	tmp->map &= ~(1<<(p - tmp->_block_t)/size);
 	return 0;
-}		 	
+}
 

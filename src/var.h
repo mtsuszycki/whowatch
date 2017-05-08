@@ -12,6 +12,6 @@ DU(8); DU(16); DU(32); DU(64);
 #define DBG(f,a...)	/* */
 #endif
 
-#define elemof(x)       (sizeof (x) / sizeof*(x))                                                   
-#define endof(x)        ((x) + elemof(x)) 
+#define elemof(x)	(sizeof (x) / sizeof*(x))
+#define endof(x)	((x) + elemof(x))
 

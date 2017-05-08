@@ -62,7 +62,7 @@
 
 
 
-enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K,                      
+enum key { ENTER=0x100, UP, DOWN, LEFT, RIGHT, DELETE, ESC, CTRL_K,
                 CTRL_I, PG_DOWN, PG_UP, HOME, END, BACKSPACE, TAB };
 
 extern unsigned long long ticks;
@@ -70,29 +70,29 @@ extern int full_cmd;
 
 struct wdgt;
 struct win {
-        struct list_head wdgts;	/* list of all widgets                  */
+	struct list_head wdgts;	/* list of all widgets                  */
 	struct list_head msg;	/* message bus for wdgts communication  */
-        u32     sy, sx;         /* physical screen coords (size+1)      */
-        u8      gbuf[256];	/* global buf to be used by any wdgt 	*/
-        u32     gbsize;
+	u32	sy, sx;		/* physical screen coords (size+1)      */
+	u8	gbuf[256];	/* global buf to be used by any wdgt 	*/
+	u32	gbsize;
 	void	*(*cval)(void);	/* returns current cursor value	(pid/name) */
-        u8      need_redraw;	/* immediate redraw needed for all wdgts*/
+	u8	need_redraw;	/* immediate redraw needed for all wdgts*/
 //	struct wdgt *mwdgt;
 };
 
 struct wdgt {
 	struct 	list_head wdgts_l;
 	struct 	list_head msg_l;
-	struct 	win *mwin;			
+	struct 	win *mwin;
 	u8 	flags;				/* NO_YRESIZE, and for future use	*/
 	char	name[8];			/* debugging identification		*/
 	void 	*prv;				/* for use by widget itself		*/
 	void 	(*wrefresh)(struct wdgt *); 	/* refreshes widget			*/
 	void 	(*redraw)(struct wdgt *);	/* print output into the widget		*/
 	int	(*keyh)(struct wdgt *, int);	/* widget's key handler			*/
-	void 	(*periodic)(struct wdgt *);	/* to execute every step seconds	*/ 
+	void 	(*periodic)(struct wdgt *);	/* to execute every step seconds	*/
 						/* message handler			*/
-	void 	*(*msgh)(struct wdgt *, int, struct wdgt *, void *);			
+	void 	*(*msgh)(struct wdgt *, int, struct wdgt *, void *);
 	u32	x, y, xsize, ysize, vx, vy;	/* screen coords and offsets		*/
 	u32	pysize, pxsize;			/* pad real dimension			*/
 	void 	*wd;				/* screen window/pad descriptor		*/
@@ -101,14 +101,14 @@ struct wdgt {
 	int 	nlines;				/* total nr of lines in output		*/
 	void 	*decor;				/* frame around widget, if any		*/
 //	u32	*crsrcache;			/* holds pid/uid indexed by crsr line	*/
-};	
+};
 
 struct process
 {
-        struct process **prev;
-        struct process *next;
+	struct process **prev;
+	struct process *next;
 	struct list_head plist_l;
-        int 	line;
+	int 	line;
 	int 	uid;
 	struct 	proc_t *proc;
 };
@@ -148,7 +148,7 @@ void exti_reg(struct wdgt *);
 void users_init(void);
 void hlp_reg(struct wdgt *);
 void input_reg(struct wdgt *w);
-	
+
 
 /* user.c */
 //void check_wtmp(void);
@@ -164,7 +164,7 @@ void procwin_init(void);
 pid_t cursor_pid(void);
 //void tree_title(struct user_t *);
 
-/* screen.c */								
+/* screen.c */
 void curses_init();
 void curses_end();
 

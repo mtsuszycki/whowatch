@@ -16,7 +16,7 @@
 #undef RETURN_TV_IN_SELECT
 
 /* define if there is ut_name in utmp structure */
-#undef HAVE_UT_NAME 
+#undef HAVE_UT_NAME
 
 /* define if have kvm library */
 #undef HAVE_LIBKVM

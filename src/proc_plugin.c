@@ -1,4 +1,4 @@
-/* 
+/*
  * Builtin proc plugin and sys plugin.
  * Get process info (ppid, tpgid, name of executable and so on).
  * This is OS dependent: in Linux reading files from "/proc" is
@@ -47,7 +47,7 @@ static void read_link(int pid, char *name)
 {
 	char *v;
 	char pbuf[32];
-	snprintf(pbuf, sizeof pbuf, "/proc/%d/%s", pid, name); 
+	snprintf(pbuf, sizeof pbuf, "/proc/%d/%s", pid, name);
 	v = _read_link(pbuf);
 	if(!v) {
 		no_info();
@@ -103,20 +103,20 @@ static struct list_head tcp_hashtable[HASH_SIZE];
 static void hash_init(struct list_head *hash)
 {
 	int i = HASH_SIZE;
-	do { 
+	do {
 		INIT_LIST_HEAD(hash);
 		hash++;
 		i--;
 	} while(i);
 }
-	
+
 
 static inline void add_to_hash(struct netconn_t *c, int inode)
 {
 	list_add(&c->n_hash, tcp_hashtable + hash(inode));
-}		
+}
 
-static struct netconn_t *tcp_find(unsigned int inode, struct list_head *head) 
+static struct netconn_t *tcp_find(unsigned int inode, struct list_head *head)
 {
 	struct list_head *h, *tmp;
 	struct netconn_t *t;
@@ -125,7 +125,7 @@ static struct netconn_t *tcp_find(unsigned int inode, struct list_head *head)
 		t = list_entry(h, struct netconn_t, n_hash);
 		if(inode == t->inode) {
 			return t;
-}			
+		}
 	}
 	return 0;
 }
@@ -148,35 +148,35 @@ static struct netconn_t *validate(unsigned int inode, char *s)
 	struct netconn_t t, *tmp;
 	int i, offset = 2 * sizeof(struct list_head) + sizeof(int) + sizeof(short);
 bzero(&t, sizeof(t));
-	i = sscanf(s, "%x:%x %x:%x %x", &t.s_addr, &t.s_port, 
+	i = sscanf(s, "%x:%x %x:%x %x", &t.s_addr, &t.s_port,
 			&t.d_addr, &t.d_port, &t.state);
 	if(i != 5) return 0;
 	tmp = tcp_find(inode, tcp_hashtable);
 	if(!tmp) {
 
-		tmp =  new_netconn(inode, &t);		
+		tmp =  new_netconn(inode, &t);
 		return tmp;
-	}	
+	}
 //	t.used = tmp->used = 0;
 	if(!memcmp((char*)&t + offset,(char*)tmp + offset, sizeof(t) - offset)) {
-		return tmp; 
+		return tmp;
 	}
 
 
 memcpy((char*)&t + offset, (char*)tmp + offset, sizeof(t) - offset);
 /*
-	tmp->s_addr = t.s_addr;	
-	tmp->s_addr = t.s_addr;	
-	tmp->d_addr = t.d_addr;	
-	tmp->s_port = t.s_port;	
-	tmp->d_port = t.d_port;	
+	tmp->s_addr = t.s_addr;
+	tmp->s_addr = t.s_addr;
+	tmp->d_addr = t.d_addr;
+	tmp->s_port = t.s_port;
+	tmp->d_port = t.d_port;
 	tmp->state = t.state;
 */
 	return tmp;
 }
 
-/* 
- * Read all TCP connections from /proc/net/tcp. 
+/*
+ * Read all TCP connections from /proc/net/tcp.
  */
 static void read_tcp_conn(void)
 {
@@ -185,11 +185,11 @@ static void read_tcp_conn(void)
 	int i;
 	unsigned int inode;
 	static int flag = 0;
-return; //function not finished yet, more testing required
+	return; //function not finished yet, more testing required
 	if(!flag) {
-		hash_init(tcp_hashtable); 
+		hash_init(tcp_hashtable);
 		flag = 1;
-	}	
+	}
 	if(!(f = fopen("/proc/net/tcp", "r"))) return;
 	/* ignore the header */
 	tmp = fgets(buf, sizeof buf, f);
@@ -217,7 +217,7 @@ static void print_net_conn(struct netconn_t *t)
 		t->s_port);
 	boldon();
 	print(buf);
-	if(t->d_addr) 
+	if(t->d_addr)
 		print(" -> %s:%d", inet_ntoa(*((struct in_addr*)&t->d_addr)), t->d_port);
 	print(" %s", tcp_state[t->state-1]);
 	boldoff();
@@ -226,8 +226,8 @@ static void print_net_conn(struct netconn_t *t)
 static int show_net_conn(char *s)
 {
 	struct netconn_t *t;
-	unsigned int inode = 0;	
-return 1;	
+	unsigned int inode = 0;
+return 1;
 	if(sscanf(s, "%d", &inode) != 1) return 1;
 	t = tcp_find(inode, tcp_hashtable);
 	if(!t) {
@@ -242,15 +242,15 @@ static void del_conn(void)
 {
 	struct list_head *h;
 	struct netconn_t *t;
-////dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
+//	dolog(__FUNCTION__": looking for %d (hash %d)\n", inode, hash(inode));
 	list_for_each(h, &tcp_l) {
 		t = list_entry(h, struct netconn_t, n_list);
-		if(t->valid	
+		if(t->valid
 */
 #include <sys/types.h>
 #include <dirent.h>
 
-/* 
+/*
  * Show opened file descriptors. Periodically call read_tcp_conn
  * to update stored TCP connections. Don't do it too often, because
  * it can generate load (/proc/net/tcp can be quite large).
@@ -269,10 +269,10 @@ void open_fds(int pid, char *name)
 		return;
 	}
 	if(!count || ticks - count >= 2) {
-		//write(1, "\a", 1);	
+//		write(1, "\a", 1);
 		read_tcp_conn();
 		count = ticks;
-	}	
+	}
 	while((dn = readdir(d))) {
 		if(dn->d_name[0] == '.') continue;
 		print("%s - ", dn->d_name);
@@ -280,20 +280,20 @@ void open_fds(int pid, char *name)
 		s = _read_link(buf);
 		if(!s) no_info();
 		else {
-			//if(!strncmp("socket:[", s, 8) && show_net_conn(s+8));
-			//else 
+//			if(!strncmp("socket:[", s, 8) && show_net_conn(s+8));
+//			else
 			show_net_conn(s+8);
 			println("%s", s);
-			//print("\n");
+//			print("\n");
 			newln();
-		}	
+		}
 	}
 	closedir(d);
 }
 
 /*
  * Returns int value at 'pos' position from proc file
- * that contains numbers separated by spaces. 
+ * that contains numbers separated by spaces.
  */
 static int read_file_pos(char *name, int pos)
 {
@@ -317,7 +317,7 @@ FOUND:
 	fclose(f);
 	if(i != 1) return -1;
 	return c;
-}	
+}
 
 static void read_proc_file(char *name, char *start, char *end)
 {
@@ -339,12 +339,12 @@ static void read_proc_file(char *name, char *start, char *end)
 		if(end && !strncmp(buf, end, elen)) goto END;
 		if(!ok) continue;
 		println(buf);
-		//newln();
+//		newln();
 	}
-END:	
+END:
 	if(!ok) no_info();
 	fclose(f);
-}	
+}
 
 static void read_meminfo(int pid, char *name)
 {
@@ -356,7 +356,7 @@ static void read_meminfo(int pid, char *name)
 #define START_TIME_POS	21
 
 /*
- * Returns time the process  
+ * Returns time the process
  * started (in jiffies) after system boot.
  */
 static unsigned long p_start_time(int pid)
@@ -379,7 +379,7 @@ FOUND:
 	fclose(f);
 	if(i != 1) return -1;
 	return c;
-}		
+}
 
 
 static time_t get_boot_time(void)
@@ -396,8 +396,8 @@ static time_t get_boot_time(void)
 FOUND:
 	fclose(f);
 	sscanf(buf+5, "%ld", &boot_time);
-       	return boot_time;
-}		
+	return boot_time;
+}
 
 
 static void proc_starttime(int pid, char *name)
@@ -405,7 +405,7 @@ static void proc_starttime(int pid, char *name)
 	unsigned long i, sec;
 	char *s;
 	time_t btime = get_boot_time();
-	
+
 	i = p_start_time(pid);
 	if(i == -1 || !btime) {
 		no_info();
@@ -417,33 +417,33 @@ static void proc_starttime(int pid, char *name)
 }
 
 struct proc_detail_t {
-        char *title;             /* title of a particular information	*/
-        void (* fn)(int pid, char *name);  
-	int t_lines;		/* nr of line for a title		*/    
+	char *title;		/* title of a particular information	*/
+	void (* fn)(int pid, char *name);
+	int t_lines;		/* nr of line for a title		*/
 	char *name;		/* used only to read links		*/
 };
 
 struct proc_detail_t proc_details_t[] = {
 	{ "START: ", proc_starttime, 0, 0 		},
-        { "EXE: ", read_link, 0, "exe" 			},
-        { "ROOT: ", read_link, 0, "root" 		},
-        { "CWD: ", read_link, 0, "cwd" 			},
+	{ "EXE: ", read_link, 0, "exe" 			},
+	{ "ROOT: ", read_link, 0, "root" 		},
+	{ "CWD: ", read_link, 0, "cwd" 			},
 	{ "\nSTATUS:\n", read_meminfo, 2, 0 		},
-	{ "\nFILE DESCRIPTORS:\n", open_fds, 2, 0 	} 
+	{ "\nFILE DESCRIPTORS:\n", open_fds, 2, 0 	}
 };
 
 
 void eproc(void *p)
 {
-        int i;
+	int i;
 	int pid = !p?1:*(u32*)p;
-        struct proc_detail_t *t;
+	struct proc_detail_t *t;
 	int size;
 	plgn_out_start();
-//print("PID %d\n", pid);newln();
+//	print("PID %d\n", pid);newln();
 	size = sizeof proc_details_t / sizeof(struct proc_detail_t);
 	for(i = 0; i < size; i++) {
-                t = &proc_details_t[i];
+		t = &proc_details_t[i];
 		title("%s", t->title);
 		t->fn(pid, t->name);
 	}
@@ -477,7 +477,7 @@ static int fill_cpu_info(void)
 	snprintf(buf, sizeof buf, "/proc/stat");
 	f = fopen(buf, "r");
 	if(!f) return -1;
-	while(fgets(buf, sizeof buf, f)) 
+	while(fgets(buf, sizeof buf, f))
 		if(!strncmp(buf, "cpu ", 4)) goto FOUND;
 	fclose(f);
 	return -1;
@@ -502,7 +502,7 @@ static inline float prcnt(unsigned long i, unsigned long v)
 	return ((float)(i*100))/(float)v;
 }
 
-/* 
+/*
  * Based on values taken by fill_cpu_info() calculate
  * and print CPU load (user, system, nice and idle).
  */
@@ -542,7 +542,7 @@ void esys(void *unused)
 	c = read_file_pos("/proc/sys/fs/inode-nr", 2);
 	if(c == -1) no_info();
 	else println("%d", c);
-	
+
 	title("\nMAX FILES: ");
 	read_proc_file("/proc/sys/fs/file-max", NULL, NULL);
 	title("MAX INODES: ");
@@ -562,5 +562,5 @@ void esys(void *unused)
 	title("\nDEVICES:\n"); newln();
 
 	read_proc_file("/proc/devices", NULL, NULL);
-}	
+}
 

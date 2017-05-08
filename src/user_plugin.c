@@ -1,4 +1,4 @@
-/* 
+/*
  * Print detailed information about user. This is a builtin plugin.
  */
 #include "pluglib.h"
@@ -7,7 +7,7 @@
 
 #define MAILBOX_PATH	"/var/spool/mail"
 
-/* 
+/*
  * Argument is a username taken from current
  * cursor position.
  */
@@ -31,4 +31,4 @@ void euser(void *p)
 	title("GECOS: "); println("%s\n", pw->pw_gecos);
 }
 
-	
+

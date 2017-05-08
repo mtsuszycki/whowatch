@@ -1,4 +1,4 @@
-/* 
+/*
  * In fact it is a special plugin because it uses plugin API.
  * It implements context sensitive help messages.
  */
@@ -38,23 +38,23 @@ static void procwin_help(void)
 	title("c"); println(" - toggle long command line");
 	title("^K"); println(" - send KILL signal");
 }
-	
+
 void sub_help(void)
 {
 	println("");
-        title("DETAILS WINDOW:\n"); newln();
-        title("a"); println(" - up");
-        title("z"); println(" - down");
-        title("left cursor"); println(" - left");
-        title("right cursor"); println(" - right");
+	title("DETAILS WINDOW:\n"); newln();
+	title("a"); println(" - up");
+	title("z"); println(" - down");
+	title("left cursor"); println(" - left");
+	title("right cursor"); println(" - right");
 }
 
 static void show_help(void *unused)
 {
-//dolog(__FUNCTION__":printing help\n");
+//	dolog(__FUNCTION__":printing help\n");
 	general();
 //	if(current == &users_list) userwin_help();
-	//if(current == &proc_win) procwin_help();	
+//	if(current == &proc_win) procwin_help();
 //	sub_help();
 }
 
@@ -62,5 +62,5 @@ static void show_help(void *unused)
 void help(void)
 {
 	;
-	//new_sub(show_help);
+//	new_sub(show_help);
 }

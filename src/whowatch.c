@@ -3,7 +3,7 @@
 #include "whowatch.h"
 #include "config.h"
 
-#define TIMEOUT		3 
+#define TIMEOUT		3
 /* Main window that holds all widgets and manages them 	*/
 static struct win win;
 static struct win *mwin = &win;
@@ -24,9 +24,9 @@ static void mwin_ ## N  (void)					\
 }
 
 unsigned long long ticks;	/* increased every TIMEOUT seconds	*/
-static int size_changed; 
+static int size_changed;
 int full_cmd = 1;	/* if 1 then show full cmd line in tree		*/
-	
+
 #ifdef HAVE_LIBKVM
 int kvm_init();
 int can_use_kvm = 0;
@@ -37,7 +37,7 @@ mwin_do_list(periodic);
 
 void mwin_redraw(int f)
 {
-	struct wdgt *w;	
+	struct wdgt *w;
 	struct list_head *l;
 	list_for_each_r(l, &mwin->wdgts) {
 		w = list_entry(l, struct wdgt, wdgts_l);
@@ -49,14 +49,14 @@ void mwin_redraw(int f)
 	}
 }
 
-char *_msg[] = { "want_dsource", "want_crsr_val", "cur_crsr", "cur_hlp", "want_upid", 
+char *_msg[] = { "want_dsource", "want_crsr_val", "cur_crsr", "cur_hlp", "want_upid",
 	"crsr_reg", "crsr_unreg", "snd_esource", "snd_info", "snd_search", "snd_search_end"};
 
 void *wmsg_send(struct wdgt *sndr, int type, void *data)
 {
-	struct wdgt *w;	
+	struct wdgt *w;
 	struct list_head *l;
-	void *ret = 0;	
+	void *ret = 0;
 	DBG("Sending message %s [%d] from %s", _msg[type], type, sndr->name);
 	list_for_each_r(l, &mwin->msg) {
 		w = list_entry(l, struct wdgt, msg_l);
@@ -67,7 +67,7 @@ void *wmsg_send(struct wdgt *sndr, int type, void *data)
 		if(ret) {
 			DBG("'%s' responded for %s [%d]", w->name, _msg[type], type);
 			return ret;
-		}	
+		}
 	}
 	DBG("End of sending %d", type);
 	return ret;
@@ -75,14 +75,14 @@ void *wmsg_send(struct wdgt *sndr, int type, void *data)
 
 static int mwin_keyh(int key)
 {
-	struct wdgt *w;	
+	struct wdgt *w;
 	struct list_head *l;
-	int ret = KEY_SKIPPED; 
+	int ret = KEY_SKIPPED;
 	list_for_each(l, &mwin->wdgts) {
 		w = list_entry(l, struct wdgt, wdgts_l);
 		if(!w->keyh) continue;
 		DBG("Calling keyh for '%s', key '%c'", w->name, key);
-		ret = w->keyh(w, key);	
+		ret = w->keyh(w, key);
 		if(ret == KEY_FINAL) return ret;
 	}
 	return ret;
@@ -121,7 +121,7 @@ void allocate_error(){
 	fprintf(stderr,"Cannot allocate memory.\n");
 	exit (1);
 }
- 
+
 /*
  * Run it after each TIMEOUT (default 3 seconds).
  */
@@ -138,7 +138,7 @@ static void main_periodic(void)
 static int signal_sent(int i)
 {
 	static int signal_sent;
-	
+
 	if(i == -1) return signal_sent;
 	return signal_sent = i;
 }
@@ -153,7 +153,7 @@ void send_signal(int sig, pid_t pid)
 	signal_sent(1);
 	if(p == -1)
 		sprintf(buf,"Can't send signal %d to process %d",
-			sig, pid); 
+			sig, pid);
 	else sprintf(buf,"Signal %d was sent to process %d",sig, pid);
 	/*
 	werase(help_win.wd);
@@ -182,33 +182,33 @@ static void get_scrsize(u32 *y, u32 *x)
 	if(ioctl(1,TIOCGWINSZ,&win) == -1)
 		err_exit(1, "ioctl error: cannot read screen size");
 
-	/* 
+	/*
 	 * We always use coordinates that starts from zero
 	 * and physical screen size is a _number_ of rows/cols
 	 */
 	*y = win.ws_row-1;
 	*x = win.ws_col-1;
-}								
+}
 
 static void resize(void)
 {
-	struct wdgt *w;	
+	struct wdgt *w;
 	struct list_head *l;
 	u32 prev_sy = mwin->sy;
 	u32 prev_sx = mwin->sx;
-	
+
 	get_scrsize(&mwin->sy, &mwin->sx);
-	
+
 	list_for_each_r(l, &mwin->wdgts) {
 		w = list_entry(l, struct wdgt, wdgts_l);
-		 /* 
-		  * we exapand pad's width but not height 
+		 /*
+		  * we exapand pad's width but not height
 		  * coz height depends on data source (output)
 		  * */
 		if(w->pxsize < mwin->sx) {
 			w->pxsize = mwin->sx+1;
 			scr_wresize(w, w->pysize, w->pxsize);
-		}	
+		}
 		w->xsize += mwin->sx - prev_sx;
 		if(w->flags & WDGT_NO_YRESIZE) continue;
 		w->ysize += mwin->sy - prev_sy;
@@ -216,7 +216,7 @@ static void resize(void)
 werase(w->wd);
 	}
 	resizeterm(mwin->sy+1, mwin->sx+1);
-	//mwin_periodic();
+//	mwin_periodic();
 	mwin_redraw(1);
 	mwin_wrefresh();
 	size_changed = 0;
@@ -231,12 +231,12 @@ static void int_handler(int i)
 {
 	curses_end();
 	exit(0);
-}		
+}
 
 static void set_sig(void)
 {
 	signal(SIGINT, int_handler);
-	signal(SIGWINCH, winch_handler);  
+	signal(SIGWINCH, winch_handler);
 //	signal(SIGSEGV, segv_handler);
 }
 
@@ -257,7 +257,7 @@ static inline struct wdgt *wdgt_alloc(void)
  */
 static int wd_create(struct wdgt *w, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
 {
-//w->wd = scr_newwin(x, y, xsize, ysize);
+//	w->wd = scr_newwin(x, y, xsize, ysize);
 	w->wd = newpad(pysize+1, pxsize+1);
 	w->color = c;
 	w->pysize = pysize;
@@ -283,7 +283,7 @@ static struct wdgt *wdgt_new(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32
 	w->vy = w->vx = 0;
 	if(!pysize) pysize = ysize - y + 1;
 	if(!pxsize) pxsize = xsize - x + 1;
-	if(!wd_create(w, ysize, xsize, pysize, pxsize, c)) 
+	if(!wd_create(w, ysize, xsize, pysize, pxsize, c))
 		err_exit(1, "Cannot create widget");
 	DBG("New '%s', %d, %d, %d, %d, %d, %d", w->name, w->y, w->x, w->ysize, w->xsize, w->pysize, w->pxsize);
 	/* disable cursor by default */
@@ -335,9 +335,9 @@ static void exti_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "exti", c);
 	exti_reg(w);
-}	
+}
 static void input_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsize, u8 c)
-{	
+{
 	struct wdgt *w;
 	w = wdgt_new(y, x, ysize, xsize, pysize, pxsize, "input", c);
 	MWADD_TO_LIST(w, msg);
@@ -349,22 +349,22 @@ static void input_wdgt(u32 y, u32 x, u32 ysize, u32 xsize, u32 pysize, u32 pxsiz
  * Order of creating widgets is important, since
  * they overlap. On widget creation it is added
  * to mwin refresh/redraw list and calling to w->wrefresh has
- * to be done in proper order. Therefore widget doesn't remove itself 
- * from mwin wrefresh/redraw list to hide itelf but sets his own 
+ * to be done in proper order. Therefore widget doesn't remove itself
+ * from mwin wrefresh/redraw list to hide itelf but sets his own
  * function pointers (wrefres/redraw) to zero.
  * Create widgets here from bottom to top, in terms of on screen
- * visibility. 
- * [sy,sx] - physical screen size, numbering starts from zero. 
+ * visibility.
+ * [sy,sx] - physical screen size, numbering starts from zero.
  */
 static void wdgts_create(int sy, int sx)
 {
 	/*
-	 *  upper left corner: [y,x], lower right [y,x], 
-	 * real size of the pad  [y,x] (numbering always starts from 0) 
+	 *  upper left corner: [y,x], lower right [y,x],
+	 * real size of the pad  [y,x] (numbering always starts from 0)
 	 */
-	info_wdgt(0, 0, 1, sx, 1, sx, CLR_WHITE_BLACK);//CLR_CYAN_BLACK);	
-	hlp_wdgt(sy, 0, sy, sx, sy, sx, CLR_CYAN_BLACK);	
-	ulist_wdgt(3, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK); 
+	info_wdgt(0, 0, 1, sx, 1, sx, CLR_WHITE_BLACK);//CLR_CYAN_BLACK);
+	hlp_wdgt(sy, 0, sy, sx, sy, sx, CLR_CYAN_BLACK);
+	ulist_wdgt(3, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK);
 	ptree_wdgt(3, 0, sy-1, sx, 256, sx, CLR_WHITE_BLACK);
 	exti_wdgt(sy/4, sx/5, sy-sy/4, sx-sx/5, 256, 128, CLR_BLACK_CYAN);
 	input_wdgt(sy, 0, sy, sx, 0, 0, CLR_BLACK_WHITE);
@@ -380,7 +380,7 @@ static void main_init(void)
 	get_scrsize(&mwin->sy, &mwin->sx);
 	mwin_init();
 
-	/* initialize screen library */	
+	/* initialize screen library */
 	scrlib_init();
 
 	/* create all widgets */
@@ -392,14 +392,14 @@ static void main_init(void)
 static void main_start(void)
 {
 	main_periodic();
-}	
+}
 
 int main(int argc, char **argv)
 {
 	struct timeval tv;
 #ifndef RETURN_TV_IN_SELECT
-  	struct timeval before;
-  	struct timeval after;
+	struct timeval before;
+	struct timeval after;
 #endif
 	fd_set rfds;
 	int retval;
@@ -408,10 +408,10 @@ int main(int argc, char **argv)
 #endif
 	main_init();
 	main_start();
-		
+
 	tv.tv_sec = TIMEOUT;
 	tv.tv_usec = 0;
-	for(;;) {				
+	for(;;) {
 		int key;
 		FD_ZERO(&rfds);
 		FD_SET(0,&rfds);

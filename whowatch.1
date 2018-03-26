@@ -11,7 +11,7 @@ Display of users command line can be switch to tty idle time.
 Certain user can be selected and his processes tree may be viewed as well
 as tree of all system processes. Tree may be displayed with additional
 column that shows owner of each process.
-In the process tree mode SIGINT and SIGKILL signals can be sent to the
+In the process tree mode SIGINT, SIGHUP, SIGTERM and SIGKILL signals can be sent to the
 selected process. Killing processes is just as simple and fun as deleting
 lines on the screen.
 .PP
@@ -58,6 +58,12 @@ send INT signal to selected process
 .TP
 .B 'Ctrl-K'
 send KILL signal to selected process
+.TP
+.B 'Ctrl-U'
+send HUP signal to selected process
+.TP
+.B 'Ctrl-T'
+send TERM signal to selected process
 
 .SH PLUGINS
 Whowatch has ability to load plugin during program run.

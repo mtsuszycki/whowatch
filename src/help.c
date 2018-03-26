@@ -36,7 +36,10 @@ static void procwin_help(void)
 	title("l"); println(" - choose from signal list");
 	title("o"); println(" - toggle process owner");
 	title("c"); println(" - toggle long command line");
+	title("^I"); println(" - send INT signal");
 	title("^K"); println(" - send KILL signal");
+	title("^U"); println(" - send HUP signal");
+	title("^T"); println(" - send TERM signal");
 }
 
 void sub_help(void)

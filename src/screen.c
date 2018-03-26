@@ -14,8 +14,8 @@ static chtype curs_buf[512];
 
 char *help_line[] = {
 	"\001[F1]Help [F9]Menu [ENT]proc all[t]ree [i]dle/cmd [c]md [d]etails [s]ysinfo",
-	"\001[ENT]users [c]md all[t]ree [d]etails [o]wner [s]ysinfo sig[l]ist ^[K]ILL",
-	"\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[K]ILL" };
+	"\001[ENT]users [c]md all[t]ree [d]etails [o]wner [s]ysinfo sig[l]ist ^[T]ERM",
+	"\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[T]ERM" };
 
 static void scr_color_init(void)
 {

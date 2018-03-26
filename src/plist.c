@@ -3,9 +3,9 @@
 
 #include <signal.h>
 
-//static char *hlp = "\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[K]ILL";
-static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
-static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [l]ine-numbers [^k]ILL [/]search";
+//static char *hlp = "\001[ENT]users [c]md [d]etails [o]owner [s]ysinfo sig[l]ist ^[T]ERM";
+static char *hlp_init_pid = "\001[ENT]users [d]etails [o]wner [s]ysinfo [l]ine-numbers [^t]ERM [/]search";
+static char *hlp = "\001[ENT]users all[t]ree [d]etails [o]wner [s]ysinfo [l]ine-numbers [^t]ERM [/]search";
 
 static DECL_LIST_HEAD(plist);
 

@@ -41,7 +41,7 @@ What method you use to obtain information about user/process/system is
 up to you. Under Linux you'll probably use data from /proc.
 Under BSD you'll use sysctl() (oh, why Linux has so poor sysctl...),
 which is much more faster and less painful than reading from /proc.
-Anyway, if you have appriopriate code then you have to generate
+Anyway, if you have appropriate code then you have to generate
 output into the details window, using simple whowatch functions:
 
 - println(const char *format, ...)

@@ -112,7 +112,11 @@ int get_term(char *tty)
 	memset(buf, 0, sizeof buf);
 	snprintf(buf, sizeof buf - 1, "/dev/%s", tty);
 	if(stat(buf, &s) == -1) return -1;
+#ifdef HAVE_STRUCT_STAT_ST_RDEV
 	return s.st_rdev;
+#else
+	return -1;
+#endif
 }
 
 /*

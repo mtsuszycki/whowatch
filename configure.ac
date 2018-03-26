@@ -48,35 +48,31 @@ AC_STRUCT_ST_RDEV
 AC_HEADER_TIME
 
 AC_MSG_CHECKING([whether utmp has USER_PROCESS type])
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <utmp.h>
-],
-[int i=USER_PROCESS;],[AC_MSG_RESULT(yes)
+]], [[int i=USER_PROCESS;]])],[AC_MSG_RESULT(yes)
 	AC_DEFINE([HAVE_USER_PROCESS],[1],[define if utmp has USER_PROCESS type])],[AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether utmp has DEAD_PROCESS type])
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <utmp.h>
-],
-[int i=DEAD_PROCESS;],[AC_MSG_RESULT(yes)
+]], [[int i=DEAD_PROCESS;]])],[AC_MSG_RESULT(yes)
 	AC_DEFINE([HAVE_DEAD_PROCESS],[1],[define if utmp has DEAD_PROCESS type])],[AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether utmp struct has ut_pid member])
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <utmp.h>
-],
-[struct utmp u;int i=u.ut_pid;],[AC_MSG_RESULT(yes)
+]], [[struct utmp u;int i=u.ut_pid;]])],[AC_MSG_RESULT(yes)
 	AC_DEFINE([HAVE_UTPID],[1],[define if utmp struct has ut_pid member])],[AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether utmp struct has ut_name member])
-AC_TRY_COMPILE([
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #include <sys/types.h>
 #include <utmp.h>
-],
-[struct utmp u;char *c=u.ut_name;],[AC_MSG_RESULT(yes)
+]], [[struct utmp u;char *c=u.ut_name;]])],[AC_MSG_RESULT(yes)
 	AC_DEFINE([HAVE_UT_NAME],[1],[define if utmp struct has ut_name member])],[AC_MSG_RESULT(no)])
 
 dnl Checks for library functions.
@@ -96,7 +92,7 @@ AC_CHECK_FUNCS([strncasecmp])
 AC_CHECK_FUNCS([strrchr])
 
 AC_MSG_CHECKING([whether select() modifies the time value])
-AC_TRY_RUN([#include <sys/types.h>
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -110,19 +106,16 @@ select(1,&rfds,0,0,&tv);
 if(tv.tv_sec == 0) exit(0);
 else exit(1);
 }
-],
-[AC_MSG_RESULT(yes); AC_DEFINE([RETURN_TV_IN_SELECT],[1],[define if select() modifies the time value])],[AC_MSG_RESULT(no)],[AC_MSG_RESULT(no)])
+]])],[AC_MSG_RESULT(yes); AC_DEFINE([RETURN_TV_IN_SELECT],[1],[define if select() modifies the time value])],[AC_MSG_RESULT(no)],[AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING([whether sysctl() can be used])
-AC_TRY_COMPILE([#include <sys/types.h>
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
 #include <sys/param.h>
-#include <sys/sysctl.h>],
-[
+#include <sys/sysctl.h>]], [[
 int mib[]={CTL_KERN,KERN_PROC,KERN_PROC_PID,1};
 size_t len;
 sysctl(mib, 4, 0, &len, 0, 0);
-],
-[AC_MSG_RESULT(yes); HAVE_PROCESS_SYSCTL=yes; AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],[AC_MSG_RESULT(no)])
+]])],[AC_MSG_RESULT(yes); HAVE_PROCESS_SYSCTL=yes; AC_DEFINE([HAVE_PROCESS_SYSCTL],[1],[define if sysctl() can be used])],[AC_MSG_RESULT(no)])
 
 AC_CHECK_MEMBERS(
 [struct kinfo_proc.kp_proc],,,

@@ -369,7 +369,7 @@ static int pkeyh(struct wdgt *w, int key)
 	}
 	/* must be visible to process keys below */
 	if(WIN_HIDDEN(w)) return KEY_SKIPPED;
-	if(ctrl == 'K') {
+	if(ctrl == 'I' || ctrl == 'K' || ctrl == 'U' || ctrl == 'T') {
 		signal_keys(w, key);
 		return ret;
 	}

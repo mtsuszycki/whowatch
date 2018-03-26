@@ -33,11 +33,17 @@ AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/time.h unistd.h)
 AC_CHECK_HEADERS(curses.h)
 AC_CHECK_HEADERS([kvm.h stdint.h])
 AC_CHECK_HEADERS([asm/param.h])
+AC_CHECK_HEADERS([arpa/inet.h])
+AC_CHECK_HEADERS([netinet/in.h])
+AC_CHECK_HEADERS([sys/param.h])
+AC_CHECK_HEADERS([termios.h])
+AC_CHECK_HEADERS([utmp.h])
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
 AC_TYPE_PID_T
+AC_TYPE_SIZE_T
 AC_STRUCT_ST_RDEV
 AC_HEADER_TIME
 
@@ -76,8 +82,18 @@ AC_TRY_COMPILE([
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
+AC_FUNC_MALLOC
 AC_CHECK_FUNCS(select)
 AC_CHECK_FUNCS(getloadavg)
+AC_CHECK_FUNCS([bzero])
+AC_CHECK_FUNCS([gettimeofday])
+AC_CHECK_FUNCS([inet_ntoa])
+AC_CHECK_FUNCS([isascii])
+AC_CHECK_FUNCS([memset])
+AC_CHECK_FUNCS([regcomp])
+AC_CHECK_FUNCS([strchr])
+AC_CHECK_FUNCS([strncasecmp])
+AC_CHECK_FUNCS([strrchr])
 
 AC_MSG_CHECKING([whether select() modifies the time value])
 AC_TRY_RUN([#include <sys/types.h>

@@ -64,7 +64,7 @@ int nr = 0;
 		tmp = list_entry(t, struct _block_tbl_t, head);
 		if(tmp->map == ~0) continue;
 		for(i = 0; i < TBL_SIZE; i++) {
-			if((1<<i & tmp->map) == NOT_USED) goto FOUND;
+			if((1U<<i & tmp->map) == NOT_USED) goto FOUND;
 		}
 nr++;
 	}

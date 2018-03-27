@@ -89,6 +89,7 @@ AC_CHECK_FUNCS([regcomp])
 AC_CHECK_FUNCS([strchr])
 AC_CHECK_FUNCS([strncasecmp])
 AC_CHECK_FUNCS([strrchr])
+AC_CHECK_FUNCS([sysconf])
 
 AC_MSG_CHECKING([whether select() modifies the time value])
 AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>

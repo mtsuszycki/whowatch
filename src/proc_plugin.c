@@ -10,12 +10,24 @@
 #include "pluglib.h"
 #include "whowatch.h"
 
-#if defined(HAVE_ASM_PARAM_H)
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#if !defined(HZ) && defined(HAVE_SYSCONF) && defined(_SC_CLK_TCK)
+#define HZ sysconf(_SC_CLK_TCK)
+#endif
+
+#if !defined(HZ) && defined(HAVE_ASM_PARAM_H)
 #include <asm/param.h>
-#elif defined(__FreeBSD_kernel__) || defined(__FreeBSD__)
+#endif
+
+#if !defined(HZ) && (defined(__FreeBSD_kernel__) || defined(__FreeBSD__))
 #define HZ 100
-#else
-#error HZ not implemented on this platform
+#endif
+
+#ifndef HZ
+#error Could not determine ticks per second
 #endif
 
 #if defined(HAVE_LIBKVM) && defined(HAVE_STDINT_H) && defined(HAVE_KVM_H)

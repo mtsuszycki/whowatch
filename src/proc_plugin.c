@@ -357,7 +357,7 @@ static void read_meminfo(int pid, char *name)
 
 /*
  * Returns time the process
- * started (in jiffies) after system boot.
+ * started in seconds after system boot.
  */
 static unsigned long p_start_time(int pid)
 {
@@ -378,7 +378,7 @@ FOUND:
 	i = fscanf(f, "%ld", &c);
 	fclose(f);
 	if(i != 1) return -1;
-	return c;
+	return c/HZ;
 }
 
 
@@ -411,7 +411,7 @@ static void proc_starttime(int pid, char *name)
 		no_info();
 		return;
 	}
-	sec = btime + i/HZ;
+	sec = btime + i;
 	s = ctime(&sec);
 	print("%s", s);
 }

@@ -1,3 +1,7 @@
+What is new in 1.8.5
+
+ - Fix user/process list update schedule
+
 What is new in 1.8.4
 
  - Added 'l' key to the process tree view. It shows the line numbers in the first column.

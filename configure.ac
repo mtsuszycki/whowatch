@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([whowatch],[1.8.5],[https://github.com/mtsuszycki/whowatch/issues],[whowatch])
+AC_INIT([whowatch],[1.8.6],[https://github.com/mtsuszycki/whowatch/issues],[whowatch])
 AM_INIT_AUTOMAKE([foreign])
 
 AC_CONFIG_SRCDIR([src/whowatch.c])

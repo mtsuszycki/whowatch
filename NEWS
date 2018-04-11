@@ -1,3 +1,11 @@
+What is new in 1.8.6
+
+ - Support sending INT/HUP/TERM signals
+ - Show TERM instead of KILL in menus
+ - Restore terminal status on exit
+ - OS portability improvements
+ - Build and code improvements
+
 What is new in 1.8.5
 
  - Fix user/process list update schedule

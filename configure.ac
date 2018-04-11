@@ -125,14 +125,6 @@ AC_CHECK_MEMBERS(
  #include <sys/proc.h>
  ])
 
-dnl Make symbolic links according to chosen unix dialect
-if test "$HAVE_PROCESS_SYSCTL" = ""; then
-	os="linux"
-else
-	os="bsd"
-fi
-AC_SUBST([os])
-
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT
 

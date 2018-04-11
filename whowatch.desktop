@@ -5,3 +5,4 @@ Comment=console, interactive, process and users monitoring tool
 Exec=whowatch
 Terminal=true
 Categories=System;Monitor;
+Keywords=monitor;process;users;

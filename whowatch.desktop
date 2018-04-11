@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=whowatch
+Comment=console, interactive, process and users monitoring tool
+Exec=whowatch
+Terminal=true
+Categories=System;Monitor;

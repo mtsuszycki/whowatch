@@ -1,4 +1,24 @@
 /*
+
+Copyright 2000-2001, 2006 Michal Suszycki <mt_suszycki@yahoo.com>
+Copyright 2013 Paul Wise <pabs3@bonedaddy.net>
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+/*
  * Get process info (ppid, tpgid, name of executable and so on).
  * This is OS dependent: in Linux reading files from "/proc" is
  * needed, in FreeBSD and OpenBSD sysctl() is used (which

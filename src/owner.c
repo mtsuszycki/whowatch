@@ -1,5 +1,7 @@
 /*
 
+SPDX-License-Identifier: GPL-2.0+
+
 Copyright 1999, 2001 Michal Suszycki <mt_suszycki@yahoo.com>
 
 This program is free software; you can redistribute it and/or modify

@@ -1,5 +1,7 @@
 /*
 
+SPDX-License-Identifier: GPL-2.0+
+
 Copyright 2001, 2006 Michal Suszycki <mt_suszycki@yahoo.com>
 Copyright 1999-2000 Jan Bobrowski <jb@wizard.ae.krakow.pl>
 

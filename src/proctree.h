@@ -1,5 +1,7 @@
 /*
 
+SPDX-License-Identifier: GPL-2.0+
+
 Copyright 1999-2000 Jan Bobrowski <jb@wizard.ae.krakow.pl>
 Copyright 2013 Paul Wise <pabs3@boneaddy.net>
 

@@ -1,5 +1,7 @@
 /*
 
+SPDX-License-Identifier: GPL-2.0+
+
 Copyright 2006 Michal Suszycki <mt_suszycki@yahoo.com>
 Copyright 2017-2018 Paul Wise <pabs3@bonedaddy.net>
 

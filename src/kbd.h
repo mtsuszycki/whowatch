@@ -1,5 +1,7 @@
 /*
 
+SPDX-License-Identifier: GPL-2.0+
+
 Copyright 2001 Jan Bobrowski <jb@wizard.ae.krakow.pl>
 
 This program is free software; you can redistribute it and/or modify

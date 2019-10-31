@@ -15,9 +15,3 @@ Future whowatch releases will be signed by one of two OpenPGP keys:
 
 * Paul Wise:     610B 28B5 5CFC FE45 EA1B  563B 3116 BA5E 9FFA 69A3
 * Mike Suszycki: 3063 9B82 3094 E640 15F7  F40B 3E6C B16A 1D1A D8D5
-
-# Related
-
-* [namecheck](https://manpages.debian.org/namecheck): check project names are not already taken
-* [Repology](https://repology.org/): FLOSS service that monitors package metadata in various repositories
-* [pkgs.org](https://pkgs.org/): service for searching Linux/BSD package repositories

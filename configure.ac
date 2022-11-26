@@ -120,8 +120,8 @@ fd_set rfds;
 struct timeval tv = {1, 0};
 FD_ZERO(&rfds); FD_SET(0,&rfds);
 select(1,&rfds,0,0,&tv);
-if(tv.tv_sec == 0) exit(0);
-else exit(1);
+if(tv.tv_sec == 0) return 0;
+else return 1;
 }
 ]])],[AC_MSG_RESULT(yes); AC_DEFINE([RETURN_TV_IN_SELECT],[1],[define if select() modifies the time value])],[AC_MSG_RESULT(no)],[AC_MSG_RESULT(no)])
 

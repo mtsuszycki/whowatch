@@ -243,7 +243,7 @@ werase(w->wd);
 	size_changed = 0;
 }
 
-static void winch_handler()
+static void winch_handler(int i)
 {
 	size_changed++;
 }

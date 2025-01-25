@@ -41,7 +41,6 @@ struct proc_t {
 };
 
 int update_tree(void del(void*));
-int update_tree();
 struct proc_t* find_by_pid(int pid);
 struct proc_t* tree_start(int root, int start);
 struct proc_t* tree_next();

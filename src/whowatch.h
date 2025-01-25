@@ -185,7 +185,7 @@ void curses_init();
 void curses_end();
 
 /* proctree.c */
-int update_tree();
+int update_tree(void del(void*));
 
 /* plist.c */
 void delete_tree_line(void *line);
